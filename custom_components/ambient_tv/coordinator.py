@@ -58,6 +58,7 @@ class AmbientTVCoordinator:
             self._task.cancel()
 
     async def _loop(self) -> None:
+        _LOGGER.info("Ambient TV loop gestart — %d lamp(en) geconfigureerd: %s", len(self._lights), list(self._lights.keys()))
         while self._running:
             try:
                 if self._device is None:
@@ -66,6 +67,7 @@ class AmbientTVCoordinator:
                 img = await self._capture()
                 zones = self._analyze(img)
 
+                updates = 0
                 for entity_id, zone in self._lights.items():
                     if zone not in zones:
                         continue
@@ -75,12 +77,16 @@ class AmbientTVCoordinator:
                         continue
                     self._last_zone_colors[zone] = zone_data
                     await self._update_light(entity_id, zone_data)
+                    updates += 1
+
+                if updates:
+                    _LOGGER.debug("Frame verwerkt — %d lamp(en) bijgewerkt", updates)
 
             except asyncio.CancelledError:
                 return
-            except Exception as err:
+            except Exception:
                 self._device = None
-                _LOGGER.warning("Capture fout (%s): %s", type(err).__name__, err)
+                _LOGGER.exception("Capture fout — loop paused 5s")
                 await asyncio.sleep(5)
 
     async def _connect(self) -> None:
