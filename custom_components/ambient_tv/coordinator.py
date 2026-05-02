@@ -4,7 +4,7 @@ import logging
 import struct
 from pathlib import Path
 
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -49,8 +49,11 @@ class AmbientTVCoordinator:
 
     def start(self) -> None:
         self._running = True
-        self._task = self.hass.async_create_task(self._loop())
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._on_started)
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
+
+    def _on_started(self, _event) -> None:
+        self._task = self.hass.async_create_task(self._loop())
 
     def _on_stop(self, _event) -> None:
         self.stop()
