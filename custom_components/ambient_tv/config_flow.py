@@ -16,46 +16,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-LIGHT_SCHEMA = vol.Schema({
-    vol.Optional("zone_left"): selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="light", multiple=True)
-    ),
-    vol.Optional("zone_right"): selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="light", multiple=True)
-    ),
-    vol.Optional("zone_ceiling"): selector.EntitySelector(
-        selector.EntitySelectorConfig(domain="light", multiple=True)
-    ),
-})
-
-SETTINGS_SCHEMA = vol.Schema({
-    vol.Optional("update_interval_ms", default=DEFAULT_UPDATE_INTERVAL_MS): vol.All(
-        int, vol.Range(min=100, max=2000)
-    ),
-    vol.Optional("transition", default=DEFAULT_TRANSITION): selector.NumberSelector(
-        selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.1, unit_of_measurement="s")
-    ),
-    vol.Optional("brightness_factor", default=DEFAULT_BRIGHTNESS_FACTOR): selector.NumberSelector(
-        selector.NumberSelectorConfig(min=0.1, max=2.0, step=0.1)
-    ),
-    vol.Optional("saturation_boost", default=DEFAULT_SATURATION_BOOST): selector.NumberSelector(
-        selector.NumberSelectorConfig(min=1.0, max=3.0, step=0.1)
-    ),
-    vol.Optional("change_threshold", default=DEFAULT_CHANGE_THRESHOLD): vol.All(
-        int, vol.Range(min=1, max=50)
-    ),
-})
-
-
-def _lights_to_zones(data: dict) -> dict:
-    """Converteer opgeslagen lights-dict terug naar zone_left/zone_right/zone_ceiling."""
-    zones: dict[str, list] = {"zone_left": [], "zone_right": [], "zone_ceiling": []}
-    for entity_id, zone in data.get("lights", {}).items():
-        key = f"zone_{zone}"
-        if key in zones:
-            zones[key].append(entity_id)
-    return zones
-
 
 def _zones_to_lights(user_input: dict) -> dict:
     lights = {}
@@ -65,21 +25,59 @@ def _zones_to_lights(user_input: dict) -> dict:
     return lights
 
 
+def _lights_to_zones(lights: dict) -> dict:
+    zones: dict[str, list] = {"zone_left": [], "zone_right": [], "zone_ceiling": []}
+    for entity_id, zone in lights.items():
+        key = f"zone_{zone}"
+        if key in zones:
+            zones[key].append(entity_id)
+    return zones
+
+
+def _options_schema(suggested: dict) -> vol.Schema:
+    return vol.Schema({
+        vol.Optional("zone_left"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
+        vol.Optional("zone_right"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
+        vol.Optional("zone_ceiling"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
+        vol.Optional("update_interval_ms", default=DEFAULT_UPDATE_INTERVAL_MS): vol.All(
+            int, vol.Range(min=100, max=2000)
+        ),
+        vol.Optional("transition", default=DEFAULT_TRANSITION): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.1, unit_of_measurement="s")
+        ),
+        vol.Optional("brightness_factor", default=DEFAULT_BRIGHTNESS_FACTOR): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=0.1, max=2.0, step=0.1)
+        ),
+        vol.Optional("saturation_boost", default=DEFAULT_SATURATION_BOOST): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1.0, max=3.0, step=0.1)
+        ),
+        vol.Optional("change_threshold", default=DEFAULT_CHANGE_THRESHOLD): vol.All(
+            int, vol.Range(min=1, max=50)
+        ),
+    })
+
+
 class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self) -> None:
-        self._data: dict = {}
+        self._host: str = ""
+        self._port: int = DEFAULT_ADB_PORT
 
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            host = user_input["adb_host"]
-            port = user_input.get("adb_port", DEFAULT_ADB_PORT)
-            error = await self._check_connection(host, port)
+            self._host = user_input["adb_host"]
+            self._port = user_input.get("adb_port", DEFAULT_ADB_PORT)
+            error = await self._check_connection(self._host, self._port)
             if error is None:
-                self._data.update(user_input)
-                return await self.async_step_lights()
+                return await self.async_step_options()
             errors["base"] = error
 
         return self.async_show_form(
@@ -91,19 +89,20 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_lights(self, user_input=None):
+    async def async_step_options(self, user_input=None):
         if user_input is not None:
-            self._data["lights"] = _zones_to_lights(user_input)
-            return await self.async_step_settings()
+            lights = _zones_to_lights(user_input)
+            settings = {k: v for k, v in user_input.items() if not k.startswith("zone_")}
+            return self.async_create_entry(
+                title="All Your Lights",
+                data={"adb_host": self._host, "adb_port": self._port},
+                options={"lights": lights, **settings},
+            )
 
-        return self.async_show_form(step_id="lights", data_schema=LIGHT_SCHEMA)
-
-    async def async_step_settings(self, user_input=None):
-        if user_input is not None:
-            self._data.update(user_input)
-            return self.async_create_entry(title="All Your Lights", data=self._data)
-
-        return self.async_show_form(step_id="settings", data_schema=SETTINGS_SCHEMA)
+        return self.async_show_form(
+            step_id="options",
+            data_schema=_options_schema({}),
+        )
 
     async def _check_connection(self, host: str, port: int) -> str | None:
         try:
@@ -119,35 +118,23 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(config_entry):
-        return AmbientTVOptionsFlow(config_entry)
+        return AmbientTVOptionsFlow()
 
 
 class AmbientTVOptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, config_entry) -> None:
-        self._entry = config_entry
-        self._data: dict = {}
-
     async def async_step_init(self, user_input=None):
-        return await self.async_step_lights()
-
-    async def async_step_lights(self, user_input=None):
         if user_input is not None:
-            self._data["lights"] = _zones_to_lights(user_input)
-            return await self.async_step_settings()
+            lights = _zones_to_lights(user_input)
+            settings = {k: v for k, v in user_input.items() if not k.startswith("zone_")}
+            return self.async_create_entry(data={"lights": lights, **settings})
 
-        current = _lights_to_zones(self._entry.data)
+        current_opts = self.config_entry.options
+        current_zones = _lights_to_zones(current_opts.get("lights", {}))
+        suggested = {**current_opts, **current_zones}
+
         return self.async_show_form(
-            step_id="lights",
-            data_schema=self.add_suggested_values_to_schema(LIGHT_SCHEMA, current),
-        )
-
-    async def async_step_settings(self, user_input=None):
-        if user_input is not None:
-            self._data.update(user_input)
-            return self.async_create_entry(title="", data=self._data)
-
-        current = {**self._entry.options, **self._entry.data}
-        return self.async_show_form(
-            step_id="settings",
-            data_schema=self.add_suggested_values_to_schema(SETTINGS_SCHEMA, current),
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                _options_schema(suggested), suggested
+            ),
         )

@@ -9,18 +9,12 @@
           "adb_port": "ADB poort (standaard 5555)"
         }
       },
-      "lights": {
-        "title": "Lampen per zone",
-        "description": "Wijs lichten toe aan zones op basis van waar ze staan ten opzichte van de TV.",
+      "options": {
+        "title": "Lampen en instellingen",
         "data": {
           "zone_left": "Links (hoek achter kijker)",
           "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
-          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)"
-        }
-      },
-      "settings": {
-        "title": "Instellingen",
-        "data": {
+          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
           "update_interval_ms": "Update interval (ms)",
           "transition": "Overgangstijd (seconden)",
           "brightness_factor": "Helderheidsfactor",
@@ -34,6 +28,23 @@
     },
     "abort": {
       "already_configured": "Ambient TV is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lampen en instellingen",
+        "data": {
+          "zone_left": "Links (hoek achter kijker)",
+          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
+          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
+          "update_interval_ms": "Update interval (ms)",
+          "transition": "Overgangstijd (seconden)",
+          "brightness_factor": "Helderheidsfactor",
+          "saturation_boost": "Verzadigingsboost",
+          "change_threshold": "Minimale kleurverandering (0-255)"
+        }
+      }
     }
   }
 }
