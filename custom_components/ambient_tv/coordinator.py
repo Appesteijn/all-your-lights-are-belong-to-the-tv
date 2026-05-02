@@ -76,7 +76,13 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
 
         except Exception as err:
             self._device = None
-            raise UpdateFailed(f"Shield ADB fout: {err}") from err
+            _LOGGER.error(
+                "Shield ADB fout (%s): %s",
+                type(err).__name__,
+                err,
+                exc_info=True,
+            )
+            raise UpdateFailed(f"Shield ADB fout ({type(err).__name__}): {err}") from err
 
     async def _connect(self) -> None:
         import asyncio
