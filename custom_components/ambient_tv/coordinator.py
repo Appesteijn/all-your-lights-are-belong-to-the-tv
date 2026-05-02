@@ -1,12 +1,12 @@
+import asyncio
 import base64
 import colorsys
 import io
 import logging
-from datetime import timedelta
+import struct
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     DOMAIN,
@@ -31,19 +31,11 @@ ZONE_BOUNDS = {
 }
 
 
-class AmbientTVCoordinator(DataUpdateCoordinator):
+class AmbientTVCoordinator:
     def __init__(self, hass: HomeAssistant, entry) -> None:
         data = {**entry.data, **entry.options}
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=timedelta(
-                milliseconds=data.get("update_interval_ms", DEFAULT_UPDATE_INTERVAL_MS)
-            ),
-        )
         self.hass = hass
-        self._host: str = data["adb_host"]
+        self._host: str = data.get("adb_host", "")
         self._port: int = data.get("adb_port", 5555)
         self._lights: dict[str, str] = data.get("lights", {})
         self._transition: float = data.get("transition", DEFAULT_TRANSITION)
@@ -53,39 +45,45 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
         self._device = None
         self._last_zone_colors: dict = {}
         self._key_path = Path(hass.config.config_dir) / ADB_KEY_PATH
+        self._task: asyncio.Task | None = None
+        self._running = False
 
-    async def _async_update_data(self) -> dict:
-        try:
-            if self._device is None:
-                await self._connect()
+    def start(self) -> None:
+        self._running = True
+        self._task = self.hass.async_create_task(self._loop())
 
-            img = await self._capture()
-            zones = self._analyze(img)
+    def stop(self) -> None:
+        self._running = False
+        if self._task:
+            self._task.cancel()
 
-            for entity_id, zone in self._lights.items():
-                if zone not in zones:
-                    continue
-                zone_data = zones[zone]
-                last = self._last_zone_colors.get(zone)
-                if last and self._delta(last, zone_data) < self._threshold:
-                    continue
-                self._last_zone_colors[zone] = zone_data
-                await self._update_light(entity_id, zone_data)
+    async def _loop(self) -> None:
+        while self._running:
+            try:
+                if self._device is None:
+                    await self._connect()
 
-            return zones
+                img = await self._capture()
+                zones = self._analyze(img)
 
-        except Exception as err:
-            self._device = None
-            _LOGGER.error(
-                "Shield ADB fout (%s): %s",
-                type(err).__name__,
-                err,
-                exc_info=True,
-            )
-            raise UpdateFailed(f"Shield ADB fout ({type(err).__name__}): {err}") from err
+                for entity_id, zone in self._lights.items():
+                    if zone not in zones:
+                        continue
+                    zone_data = zones[zone]
+                    last = self._last_zone_colors.get(zone)
+                    if last and self._delta(last, zone_data) < self._threshold:
+                        continue
+                    self._last_zone_colors[zone] = zone_data
+                    await self._update_light(entity_id, zone_data)
+
+            except asyncio.CancelledError:
+                return
+            except Exception as err:
+                self._device = None
+                _LOGGER.warning("Capture fout (%s): %s", type(err).__name__, err)
+                await asyncio.sleep(5)
 
     async def _connect(self) -> None:
-        import asyncio
         from adb_shell.adb_device_async import AdbDeviceTcpAsync
 
         signer = await self.hass.async_add_executor_job(self._get_or_create_signer)
@@ -102,23 +100,18 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
 
         self._key_path.parent.mkdir(parents=True, exist_ok=True)
         if not self._key_path.exists():
-            _LOGGER.info("ADB sleutelpaar aangemaakt in %s", self._key_path)
             keygen(str(self._key_path))
         return PythonRSASigner.FromRSAKeyPath(str(self._key_path))
 
     async def _capture(self):
-        import asyncio
-        import gzip
-        import struct
         from PIL import Image
 
-        # screencap zonder -p geeft raw RGBA, gzip comprimeert dat ~10x beter dan PNG base64
-        raw_b64 = await asyncio.wait_for(
-            self._device.shell("screencap | gzip | base64"),
-            timeout=30,
+        # decode=False geeft raw bytes terug — geen base64 nodig
+        raw = await asyncio.wait_for(
+            self._device.shell("screencap", decode=False),
+            timeout=15,
         )
-        raw = gzip.decompress(base64.b64decode(raw_b64))
-        # screencap raw formaat: 4B width, 4B height, 4B pixel_format, daarna RGBA pixels
+        # screencap raw formaat: 4B width, 4B height, 4B pixel_format, RGBA pixels
         w, h = struct.unpack_from("<II", raw, 0)
         img = Image.frombytes("RGBA", (w, h), raw[12:]).convert("RGB")
         return img.resize((CAPTURE_W, CAPTURE_H), Image.LANCZOS)
@@ -145,39 +138,35 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
                 }
             else:
                 r2, g2, b2 = self._boost_color(r, g, b)
-                result[zone] = {
-                    "type": "rgb",
-                    "rgb": (r2, g2, b2),
-                }
+                result[zone] = {"type": "rgb", "rgb": (r2, g2, b2)}
 
         return result
 
-    def _boost_color(self, r: int, g: int, b: int) -> tuple:
+    def _boost_color(self, r, g, b):
         h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
         s = min(1.0, s * self._saturation_boost)
         v = min(1.0, v * self._brightness_factor)
         r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v)
         return (int(r2 * 255), int(g2 * 255), int(b2 * 255))
 
-    def _scene_brightness(self, r: int, g: int, b: int) -> int:
+    def _scene_brightness(self, r, g, b):
         lum = int((0.299 * r + 0.587 * g + 0.114 * b) * self._brightness_factor)
         return max(10, min(255, lum))
 
-    def _rgb_to_ct(self, r: int, g: int, b: int) -> int:
-        # Verhouding rood/blauw geeft scènewarmte aan
+    def _rgb_to_ct(self, r, g, b):
         warmth = r / max(b, 1)
         warmth = max(0.3, min(3.5, warmth))
         kelvin = int(2200 + (3.5 - warmth) / 3.2 * 4335)
         return max(2000, min(6535, kelvin))
 
-    def _delta(self, a: dict, b: dict) -> int:
+    def _delta(self, a, b):
         if a.get("type") == "ct":
             return abs(a.get("ct_kelvin", 0) - b.get("ct_kelvin", 0)) // 10
         ra, ga, ba = a["rgb"]
         rb, gb, bb = b["rgb"]
         return max(abs(ra - rb), abs(ga - gb), abs(ba - bb))
 
-    async def _update_light(self, entity_id: str, zone_data: dict) -> None:
+    async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
         if state is None or state.state == "unavailable":
             return
@@ -187,32 +176,15 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
             r, g, b = zone_data["rgb"]
             await self.hass.services.async_call(
-                "light",
-                "turn_on",
-                {
-                    "entity_id": entity_id,
-                    "rgb_color": [r, g, b],
-                    "transition": self._transition,
-                },
+                "light", "turn_on",
+                {"entity_id": entity_id, "rgb_color": [r, g, b], "transition": self._transition},
                 blocking=False,
             )
         elif "color_temp" in supported:
-            if zone_data["type"] == "rgb":
-                r, g, b = zone_data["rgb"]
-                ct = self._rgb_to_ct(r, g, b)
-                brightness = self._scene_brightness(r, g, b)
-            else:
-                ct = zone_data["ct_kelvin"]
-                brightness = zone_data["brightness"]
-
+            ct = zone_data.get("ct_kelvin") or self._rgb_to_ct(*zone_data["rgb"])
+            brightness = zone_data.get("brightness") or self._scene_brightness(*zone_data["rgb"])
             await self.hass.services.async_call(
-                "light",
-                "turn_on",
-                {
-                    "entity_id": entity_id,
-                    "color_temp_kelvin": ct,
-                    "brightness": brightness,
-                    "transition": self._transition,
-                },
+                "light", "turn_on",
+                {"entity_id": entity_id, "color_temp_kelvin": ct, "brightness": brightness, "transition": self._transition},
                 blocking=False,
             )
