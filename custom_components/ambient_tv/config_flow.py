@@ -144,18 +144,10 @@ class AmbientTVOptionsFlow(config_entries.OptionsFlow):
     async def async_step_settings(self, user_input=None):
         if user_input is not None:
             self._data.update(user_input)
-            # Sla op in options EN update de entry data
-            self.hass.config_entries.async_update_entry(
-                self._entry,
-                data={**self._entry.data, **self._data},
-            )
             return self.async_create_entry(title="", data=self._data)
 
-        current = {
-            k: self._entry.data.get(k, v.default() if hasattr(v, 'default') else None)
-            for k, v in SETTINGS_SCHEMA.schema.items()
-        }
+        current = {**self._entry.options, **self._entry.data}
         return self.async_show_form(
             step_id="settings",
-            data_schema=self.add_suggested_values_to_schema(SETTINGS_SCHEMA, self._entry.data),
+            data_schema=self.add_suggested_values_to_schema(SETTINGS_SCHEMA, current),
         )

@@ -33,7 +33,7 @@ ZONE_BOUNDS = {
 
 class AmbientTVCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry) -> None:
-        data = entry.data
+        data = {**entry.data, **entry.options}
         super().__init__(
             hass,
             _LOGGER,
