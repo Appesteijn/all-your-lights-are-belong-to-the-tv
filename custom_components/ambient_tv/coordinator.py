@@ -108,14 +108,19 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
 
     async def _capture(self):
         import asyncio
+        import gzip
+        import struct
         from PIL import Image
 
+        # screencap zonder -p geeft raw RGBA, gzip comprimeert dat ~10x beter dan PNG base64
         raw_b64 = await asyncio.wait_for(
-            self._device.shell("screencap -p | base64"),
-            timeout=10,
+            self._device.shell("screencap | gzip | base64"),
+            timeout=30,
         )
-        img_bytes = base64.b64decode(raw_b64)
-        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        raw = gzip.decompress(base64.b64decode(raw_b64))
+        # screencap raw formaat: 4B width, 4B height, 4B pixel_format, daarna RGBA pixels
+        w, h = struct.unpack_from("<II", raw, 0)
+        img = Image.frombytes("RGBA", (w, h), raw[12:]).convert("RGB")
         return img.resize((CAPTURE_W, CAPTURE_H), Image.LANCZOS)
 
     def _analyze(self, img) -> dict:
