@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Shield connection",
+        "description": "Enable ADB network debugging on the Shield:\nSettings → Device Preferences → Developer Options → Network debugging",
+        "data": {
+          "adb_host": "Shield IP address",
+          "adb_port": "ADB port (default 5555)"
+        }
+      },
+      "lights": {
+        "title": "Lights per zone",
+        "description": "Assign lights to zones based on their position relative to the TV.",
+        "data": {
+          "zone_left": "Left (corner behind viewer)",
+          "zone_right": "Right (corner behind viewer + mantle lamps)",
+          "zone_ceiling": "Ceiling (color temperature follows scene)"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "data": {
+          "update_interval_ms": "Update interval (ms)",
+          "transition": "Transition time (seconds)",
+          "brightness_factor": "Brightness factor",
+          "saturation_boost": "Saturation boost",
+          "change_threshold": "Minimum color change (0-255)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Shield. Check the IP address and whether ADB network debugging is enabled."
+    },
+    "abort": {
+      "already_configured": "Ambient TV is already configured."
+    }
+  }
+}

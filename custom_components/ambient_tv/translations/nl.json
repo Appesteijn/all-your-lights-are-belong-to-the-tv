@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Shield verbinding",
+        "description": "Schakel ADB-netwerk debuggen in op de Shield:\nInstellingen → Apparaatvoorkeuren → Ontwikkelaarsopties → Netwerk-debuggen",
+        "data": {
+          "adb_host": "IP-adres van de Shield",
+          "adb_port": "ADB poort (standaard 5555)"
+        }
+      },
+      "lights": {
+        "title": "Lampen per zone",
+        "description": "Wijs lichten toe aan zones op basis van waar ze staan ten opzichte van de TV.",
+        "data": {
+          "zone_left": "Links (hoek achter kijker)",
+          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
+          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)"
+        }
+      },
+      "settings": {
+        "title": "Instellingen",
+        "data": {
+          "update_interval_ms": "Update interval (ms)",
+          "transition": "Overgangstijd (seconden)",
+          "brightness_factor": "Helderheidsfactor",
+          "saturation_boost": "Verzadigingsboost",
+          "change_threshold": "Minimale kleurverandering (0-255)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met de Shield. Controleer IP-adres en of ADB netwerk-debuggen aan staat."
+    },
+    "abort": {
+      "already_configured": "Ambient TV is al geconfigureerd."
+    }
+  }
+}

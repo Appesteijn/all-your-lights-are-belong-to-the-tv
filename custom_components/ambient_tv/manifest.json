@@ -1,0 +1,10 @@
+{
+  "domain": "ambient_tv",
+  "name": "All Your Lights Are Belong to the TV",
+  "version": "1.0.0",
+  "requirements": ["adb-shell==0.4.4", "Pillow>=10.0.0"],
+  "dependencies": [],
+  "codeowners": [],
+  "iot_class": "local_polling",
+  "config_flow": true
+}
