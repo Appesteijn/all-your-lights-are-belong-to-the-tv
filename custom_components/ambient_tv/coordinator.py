@@ -1,11 +1,10 @@
 import asyncio
-import base64
 import colorsys
-import io
 import logging
 import struct
 from pathlib import Path
 
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -51,6 +50,10 @@ class AmbientTVCoordinator:
     def start(self) -> None:
         self._running = True
         self._task = self.hass.async_create_task(self._loop())
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
+
+    def _on_stop(self, _event) -> None:
+        self.stop()
 
     def stop(self) -> None:
         self._running = False
