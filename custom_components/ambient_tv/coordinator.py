@@ -79,11 +79,15 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Shield ADB fout: {err}") from err
 
     async def _connect(self) -> None:
+        import asyncio
         from adb_shell.adb_device_async import AdbDeviceTcpAsync
 
         signer = await self.hass.async_add_executor_job(self._get_or_create_signer)
-        self._device = AdbDeviceTcpAsync(self._host, self._port, default_timeout_s=10)
-        await self._device.connect(rsa_keys=[signer], auth_timeout_s=30)
+        self._device = AdbDeviceTcpAsync(self._host, self._port)
+        await asyncio.wait_for(
+            self._device.connect(rsa_keys=[signer], auth_timeout_s=30),
+            timeout=35,
+        )
         _LOGGER.info("Verbonden met Shield op %s:%d", self._host, self._port)
 
     def _get_or_create_signer(self):
@@ -97,9 +101,13 @@ class AmbientTVCoordinator(DataUpdateCoordinator):
         return PythonRSASigner.FromRSAKeyPath(str(self._key_path))
 
     async def _capture(self):
+        import asyncio
         from PIL import Image
 
-        raw_b64 = await self._device.shell("screencap -p | base64", timeout_s=10)
+        raw_b64 = await asyncio.wait_for(
+            self._device.shell("screencap -p | base64"),
+            timeout=10,
+        )
         img_bytes = base64.b64decode(raw_b64)
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         return img.resize((CAPTURE_W, CAPTURE_H), Image.LANCZOS)
