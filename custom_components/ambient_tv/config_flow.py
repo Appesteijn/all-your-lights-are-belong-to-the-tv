@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
@@ -12,6 +14,8 @@ from .const import (
     DEFAULT_CHANGE_THRESHOLD,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -22,12 +26,13 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            try:
-                await self._test_adb(user_input["adb_host"], user_input.get("adb_port", DEFAULT_ADB_PORT))
+            host = user_input["adb_host"]
+            port = user_input.get("adb_port", DEFAULT_ADB_PORT)
+            error = await self._check_connection(host, port)
+            if error is None:
                 self._data.update(user_input)
                 return await self.async_step_lights()
-            except Exception:
-                errors["base"] = "cannot_connect"
+            errors["base"] = error
 
         return self.async_show_form(
             step_id="user",
@@ -36,9 +41,6 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("adb_port", default=DEFAULT_ADB_PORT): int,
             }),
             errors=errors,
-            description_placeholders={
-                "adb_info": "Schakel op de Shield in via: Instellingen → Apparaatvoorkeuren → Ontwikkelaarsopties → Netwerk-debuggen"
-            },
         )
 
     async def async_step_lights(self, user_input=None):
@@ -68,7 +70,7 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_settings(self, user_input=None):
         if user_input is not None:
             self._data.update(user_input)
-            return self.async_create_entry(title="Ambient TV", data=self._data)
+            return self.async_create_entry(title="All Your Lights", data=self._data)
 
         return self.async_show_form(
             step_id="settings",
@@ -91,24 +93,21 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
         )
 
-    async def _test_adb(self, host: str, port: int) -> None:
-        from pathlib import Path
-        from adb_shell.adb_device_async import AdbDeviceTcpAsync
+    async def _check_connection(self, host: str, port: int) -> str | None:
+        """Geeft None terug bij succes, of een error-key bij fout."""
+        # Stap 1: TCP bereikbaarheid
+        try:
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port), timeout=5
+            )
+            writer.close()
+            await writer.wait_closed()
+        except (OSError, asyncio.TimeoutError) as err:
+            _LOGGER.warning("Shield niet bereikbaar op %s:%s: %s", host, port, err)
+            return "cannot_connect"
 
-        signer = await self.hass.async_add_executor_job(
-            self._prepare_signer,
-            Path(self.hass.config.config_dir) / ".adb" / "adbkey",
-        )
-        device = AdbDeviceTcpAsync(host, port, default_timeout_s=10)
-        await device.connect(rsa_keys=[signer], auth_timeout_s=30)
-        await device.close()
-
-    @staticmethod
-    def _prepare_signer(key_path):
-        from adb_shell.auth.sign_pythonrsa import PythonRSASigner
-        from adb_shell.auth.keygen import keygen
-
-        key_path.parent.mkdir(parents=True, exist_ok=True)
-        if not key_path.exists():
-            keygen(str(key_path))
-        return PythonRSASigner.FromRSAKeyPath(str(key_path))
+        # Stap 2: ADB handshake — mislukt bij eerste keer (auth prompt op TV)
+        # We slaan dit over: de coordinator verbindt bij opstarten en toont
+        # de auth-prompt op de Shield. Gebruiker keurt eenmalig goed.
+        _LOGGER.info("Shield bereikbaar op %s:%s, ADB auth volgt bij eerste start", host, port)
+        return None
