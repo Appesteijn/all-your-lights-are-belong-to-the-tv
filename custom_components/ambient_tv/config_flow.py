@@ -92,8 +92,23 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def _test_adb(self, host: str, port: int) -> None:
+        from pathlib import Path
         from adb_shell.adb_device_async import AdbDeviceTcpAsync
 
+        signer = await self.hass.async_add_executor_job(
+            self._prepare_signer,
+            Path(self.hass.config.config_dir) / ".adb" / "adbkey",
+        )
         device = AdbDeviceTcpAsync(host, port, default_timeout_s=10)
-        await device.connect(rsa_keys=[], auth_timeout_s=10)
+        await device.connect(rsa_keys=[signer], auth_timeout_s=30)
         await device.close()
+
+    @staticmethod
+    def _prepare_signer(key_path):
+        from adb_shell.auth.sign_pythonrsa import PythonRSASigner
+        from adb_shell.auth.keygen import keygen
+
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        if not key_path.exists():
+            keygen(str(key_path))
+        return PythonRSASigner.FromRSAKeyPath(str(key_path))
