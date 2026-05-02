@@ -70,17 +70,20 @@ class AmbientTVCoordinator:
                 img = await self._capture()
                 zones = self._analyze(img)
 
+                changed = {
+                    zone: data for zone, data in zones.items()
+                    if not self._last_zone_colors.get(zone)
+                    or self._delta(self._last_zone_colors[zone], data) >= self._threshold
+                }
+
                 updates = 0
                 for entity_id, zone in self._lights.items():
-                    if zone not in zones:
+                    if zone not in changed:
                         continue
-                    zone_data = zones[zone]
-                    last = self._last_zone_colors.get(zone)
-                    if last and self._delta(last, zone_data) < self._threshold:
-                        continue
-                    self._last_zone_colors[zone] = zone_data
-                    await self._update_light(entity_id, zone_data)
+                    await self._update_light(entity_id, changed[zone])
                     updates += 1
+
+                self._last_zone_colors.update(changed)
 
                 if updates:
                     _LOGGER.debug("Frame verwerkt — %d lamp(en) bijgewerkt", updates)
