@@ -1,7 +1,7 @@
 {
   "domain": "ambient_tv",
   "name": "All Your Lights Are Belong to the TV",
-  "version": "1.2.17",
+  "version": "1.2.18",
   "requirements": ["adb-shell==0.4.4", "Pillow>=10.0.0"],
   "dependencies": [],
   "codeowners": [],

@@ -59,6 +59,7 @@ class AmbientTVCoordinator:
         self._shield_active = True
         self._shield_event: asyncio.Event = asyncio.Event()
         self._remove_shield_listener = None
+        self._al_switches: list[str] = []
 
     @property
     def enabled(self) -> bool:
@@ -75,28 +76,15 @@ class AmbientTVCoordinator:
 
     async def _release_siblings(self) -> None:
         """Zet witte zusterentiteiten terug aan en geef alle lampen terug aan Adaptive Lighting."""
-        has_al = self.hass.services.has_service("adaptive_lighting", "set_manual_control")
         for entity_id in self._lights:
-            # Geef zone-lamp zelf terug aan AL
-            if has_al:
-                await self.hass.services.async_call(
-                    "adaptive_lighting", "set_manual_control",
-                    {"entity_id": entity_id, "manual_control": False},
-                    blocking=False,
-                )
-            # Zet witte sibling aan en geef ook terug aan AL
+            await self._set_al_manual_control(entity_id, False)
             for sibling_id in await self._get_siblings(entity_id):
                 await self.hass.services.async_call(
                     "light", "turn_on",
                     {"entity_id": sibling_id},
                     blocking=False,
                 )
-                if has_al:
-                    await self.hass.services.async_call(
-                        "adaptive_lighting", "set_manual_control",
-                        {"entity_id": sibling_id, "manual_control": False},
-                        blocking=False,
-                    )
+                await self._set_al_manual_control(sibling_id, False)
 
     def start(self) -> None:
         self._running = True
@@ -111,6 +99,14 @@ class AmbientTVCoordinator:
         self._begin()
 
     def _begin(self) -> None:
+        self._al_switches = [
+            s.entity_id for s in self.hass.states.async_all("switch")
+            if s.entity_id.startswith("switch.adaptive_lighting_")
+            and not any(x in s.entity_id for x in ("sleep_mode", "adapt_color", "adapt_brightness", "pre_release"))
+        ]
+        if self._al_switches:
+            _LOGGER.info("Adaptive Lighting schakelaars gevonden: %s", self._al_switches)
+
         if self._shield_entity:
             self._remove_shield_listener = async_track_state_change_event(
                 self.hass, [self._shield_entity], self._on_shield_state_change
@@ -332,6 +328,17 @@ class AmbientTVCoordinator:
             if s.entity_id != entity_id and s.domain == "light"
         ]
 
+    async def _set_al_manual_control(self, entity_id: str, manual: bool) -> None:
+        if not self._al_switches:
+            return
+        if not self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+            return
+        await self.hass.services.async_call(
+            "adaptive_lighting", "set_manual_control",
+            {"entity_id": entity_id, "manual_control": manual, "lights": self._al_switches},
+            blocking=False,
+        )
+
     async def _turn_off_white_siblings(self, entity_id: str) -> None:
         for sibling_id in await self._get_siblings(entity_id):
             state = self.hass.states.get(sibling_id)
@@ -343,13 +350,7 @@ class AmbientTVCoordinator:
                 {"entity_id": sibling_id, "transition": self._transition},
                 blocking=False,
             )
-            # Vertel Adaptive Lighting dit licht niet te herstarten
-            if self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
-                await self.hass.services.async_call(
-                    "adaptive_lighting", "set_manual_control",
-                    {"entity_id": sibling_id, "manual_control": True},
-                    blocking=False,
-                )
+            await self._set_al_manual_control(sibling_id, True)
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
@@ -379,10 +380,5 @@ class AmbientTVCoordinator:
             )
             sent = True
 
-        # Voorkom dat Adaptive Lighting onze kleur meteen overschrijft
-        if sent and self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
-            await self.hass.services.async_call(
-                "adaptive_lighting", "set_manual_control",
-                {"entity_id": entity_id, "manual_control": True},
-                blocking=False,
-            )
+        if sent:
+            await self._set_al_manual_control(entity_id, True)
