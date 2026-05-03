@@ -180,6 +180,9 @@ class AmbientTVCoordinator:
 
                 updates = 0
                 for entity_id, zone in self._lights.items():
+                    zone_data = smoothed_zones.get(zone, {})
+                    if zone_data.get("type") == "rgb":
+                        await self._turn_off_white_siblings(entity_id)
                     if zone not in changed:
                         continue
                     await self._update_light(entity_id, changed[zone])
@@ -317,7 +320,6 @@ class AmbientTVCoordinator:
         supported = state.attributes.get("supported_color_modes", [])
 
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
-            await self._turn_off_white_siblings(entity_id)
             r, g, b = zone_data["rgb"]
             await self.hass.services.async_call(
                 "light", "turn_on",
