@@ -15,6 +15,7 @@ from .const import (
     DEFAULT_BRIGHTNESS_FACTOR,
     DEFAULT_SATURATION_BOOST,
     DEFAULT_UPDATE_INTERVAL_MS,
+    DEFAULT_SMOOTHING,
     ADB_KEY_PATH,
     ZONE_CEILING,
     CONF_SHIELD_ENTITY,
@@ -45,9 +46,11 @@ class AmbientTVCoordinator:
         self._brightness_factor: float = data.get("brightness_factor", DEFAULT_BRIGHTNESS_FACTOR)
         self._saturation_boost: float = data.get("saturation_boost", DEFAULT_SATURATION_BOOST)
         self._threshold: int = data.get("change_threshold", DEFAULT_CHANGE_THRESHOLD)
+        self._smoothing: float = data.get("smoothing", DEFAULT_SMOOTHING)
         self._shield_entity: str | None = data.get(CONF_SHIELD_ENTITY)
         self._device = None
         self._last_zone_colors: dict = {}
+        self._smoothed_zone_colors: dict = {}
         self._key_path = Path(hass.config.config_dir) / ADB_KEY_PATH
         self._task: asyncio.Task | None = None
         self._running = False
@@ -88,6 +91,26 @@ class AmbientTVCoordinator:
 
         self._task = self.hass.async_create_task(self._loop())
 
+    def _smooth(self, current: dict, previous: dict | None) -> dict:
+        if previous is None or self._smoothing >= 1.0:
+            return current
+        a = self._smoothing
+        if current["type"] == "rgb":
+            cr, cg, cb = current["rgb"]
+            pr, pg, pb = previous["rgb"]
+            return {**current, "rgb": (
+                int(a * cr + (1 - a) * pr),
+                int(a * cg + (1 - a) * pg),
+                int(a * cb + (1 - a) * pb),
+            )}
+        cr, cg, cb = current["rgb"]
+        pr, pg, pb = previous["rgb"]
+        return {**current,
+            "rgb": (int(a * cr + (1-a) * pr), int(a * cg + (1-a) * pg), int(a * cb + (1-a) * pb)),
+            "ct_kelvin": int(a * current["ct_kelvin"] + (1-a) * previous["ct_kelvin"]),
+            "brightness": int(a * current["brightness"] + (1-a) * previous["brightness"]),
+        }
+
     def _on_shield_state_change(self, event) -> None:
         new_state = event.data.get("new_state")
         if new_state is None:
@@ -98,6 +121,7 @@ class AmbientTVCoordinator:
             _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "gestart" if self._shield_active else "gestopt")
             if not self._shield_active:
                 self._last_zone_colors.clear()
+                self._smoothed_zone_colors.clear()
 
     def _on_stop(self, _event) -> None:
         self.stop()
@@ -120,10 +144,16 @@ class AmbientTVCoordinator:
                     await self._connect()
 
                 img = await self._capture()
-                zones = self._analyze(img)
+                raw_zones = self._analyze(img)
+
+                smoothed_zones = {
+                    zone: self._smooth(data, self._smoothed_zone_colors.get(zone))
+                    for zone, data in raw_zones.items()
+                }
+                self._smoothed_zone_colors = smoothed_zones
 
                 changed = {
-                    zone: data for zone, data in zones.items()
+                    zone: data for zone, data in smoothed_zones.items()
                     if not self._last_zone_colors.get(zone)
                     or self._delta(self._last_zone_colors[zone], data) >= self._threshold
                 }

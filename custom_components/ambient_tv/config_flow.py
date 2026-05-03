@@ -12,6 +12,7 @@ from .const import (
     DEFAULT_BRIGHTNESS_FACTOR,
     DEFAULT_SATURATION_BOOST,
     DEFAULT_CHANGE_THRESHOLD,
+    DEFAULT_SMOOTHING,
     CONF_SHIELD_ENTITY,
 )
 
@@ -54,6 +55,9 @@ def _options_schema(suggested: dict) -> vol.Schema:
         ),
         vol.Optional("transition", default=DEFAULT_TRANSITION): selector.NumberSelector(
             selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.1, unit_of_measurement="s")
+        ),
+        vol.Optional("smoothing", default=DEFAULT_SMOOTHING): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=0.1, max=1.0, step=0.1)
         ),
         vol.Optional("brightness_factor", default=DEFAULT_BRIGHTNESS_FACTOR): selector.NumberSelector(
             selector.NumberSelectorConfig(min=0.1, max=2.0, step=0.1)
