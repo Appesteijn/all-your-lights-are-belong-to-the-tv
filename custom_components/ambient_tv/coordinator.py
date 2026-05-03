@@ -339,7 +339,7 @@ class AmbientTVCoordinator:
             return
         await self.hass.services.async_call(
             "adaptive_lighting", "set_manual_control",
-            {"entity_id": entity_id, "manual_control": manual, "lights": self._al_switches},
+            {"entity_id": self._al_switches, "manual_control": manual, "lights": [entity_id]},
             blocking=False,
         )
 
