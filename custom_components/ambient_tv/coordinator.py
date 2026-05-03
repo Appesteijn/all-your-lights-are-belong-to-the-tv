@@ -208,8 +208,8 @@ class AmbientTVCoordinator:
         from PIL import Image
 
         raw = await asyncio.wait_for(
-            self._device.shell("screencap", decode=False),
-            timeout=15,
+            self._device.shell("screencap", decode=False, transport_timeout_s=30),
+            timeout=35,
         )
         # screencap raw formaat: 4B width, 4B height, 4B pixel_format, RGBA pixels
         w, h = struct.unpack_from("<II", raw, 0)
