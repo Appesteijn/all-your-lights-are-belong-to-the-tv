@@ -195,9 +195,13 @@ class AmbientTVCoordinator:
 
             except asyncio.CancelledError:
                 return
-            except Exception:
+            except Exception as err:
+                from adb_shell.exceptions import TcpTimeoutException
                 self._device = None
-                _LOGGER.exception("Capture fout — loop paused 5s")
+                if isinstance(err, TcpTimeoutException):
+                    _LOGGER.debug("ADB timeout (Shield slapend?), herverbind na 5s")
+                else:
+                    _LOGGER.exception("Capture fout — loop paused 5s")
                 await asyncio.sleep(5)
 
     async def _connect(self) -> None:
