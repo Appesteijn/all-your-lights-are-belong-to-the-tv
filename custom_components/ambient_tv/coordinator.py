@@ -48,6 +48,7 @@ class AmbientTVCoordinator:
         self._threshold: int = data.get("change_threshold", DEFAULT_CHANGE_THRESHOLD)
         self._smoothing: float = data.get("smoothing", DEFAULT_SMOOTHING)
         self._shield_entity: str | None = data.get(CONF_SHIELD_ENTITY)
+        self._update_interval_s: float = data.get("update_interval_ms", DEFAULT_UPDATE_INTERVAL_MS) / 1000
         self._device = None
         self._last_zone_colors: dict = {}
         self._smoothed_zone_colors: dict = {}
@@ -183,6 +184,13 @@ class AmbientTVCoordinator:
                 }
                 self._smoothed_zone_colors = smoothed_zones
 
+                # Als een geconfigureerde lamp uit staat, verwijder zijn zone uit de cache
+                # zodat hij volgende frame als "changed" wordt behandeld en weer aan gaat.
+                for entity_id, zone in self._lights.items():
+                    s = self.hass.states.get(entity_id)
+                    if s is not None and s.state != "on":
+                        self._last_zone_colors.pop(zone, None)
+
                 changed = {
                     zone: data for zone, data in smoothed_zones.items()
                     if not self._last_zone_colors.get(zone)
@@ -203,6 +211,8 @@ class AmbientTVCoordinator:
 
                 if updates:
                     _LOGGER.debug("Frame verwerkt — %d lamp(en) bijgewerkt", updates)
+
+                await asyncio.sleep(self._update_interval_s)
 
             except asyncio.CancelledError:
                 return
@@ -329,8 +339,10 @@ class AmbientTVCoordinator:
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
-        if state is None or state.state != "on":
+        if state is None:
             return
+        if state.state != "on":
+            _LOGGER.debug("Lamp %s is uit — zet aan via ambilight", entity_id)
 
         supported = state.attributes.get("supported_color_modes", [])
 
