@@ -2,47 +2,51 @@
   "config": {
     "step": {
       "user": {
-        "title": "Shield verbinding",
-        "description": "Schakel ADB-netwerk debuggen in op de Shield:\nInstellingen → Apparaatvoorkeuren → Ontwikkelaarsopties → Netwerk-debuggen",
+        "title": "Shield connection",
+        "description": "Enable ADB network debugging on the Shield:\nSettings → Device Preferences → Developer Options → Network debugging",
         "data": {
-          "adb_host": "IP-adres van de Shield",
-          "adb_port": "ADB poort (standaard 5555)"
+          "adb_host": "Shield IP address",
+          "adb_port": "ADB port (default 5555)"
         }
       },
       "options": {
-        "title": "Lampen en instellingen",
+        "title": "Lights and settings",
         "data": {
-          "zone_left": "Links (hoek achter kijker)",
-          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
-          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
+          "shield_entity": "Shield media player (optional — for auto start/stop)",
+          "zone_left": "Left (corner behind viewer)",
+          "zone_right": "Right (corner behind viewer + mantle lamps)",
+          "zone_ceiling": "Ceiling (color temperature follows scene)",
           "update_interval_ms": "Update interval (ms)",
-          "transition": "Overgangstijd (seconden)",
-          "brightness_factor": "Helderheidsfactor",
-          "saturation_boost": "Verzadigingsboost",
-          "change_threshold": "Minimale kleurverandering (0-255)"
+          "transition": "Transition time (seconds)",
+          "brightness_factor": "Brightness factor",
+          "saturation_boost": "Saturation boost",
+          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
+          "change_threshold": "Minimum color change (0-255)"
         }
       }
     },
     "error": {
-      "cannot_connect": "Kan geen verbinding maken met de Shield. Controleer IP-adres en of ADB netwerk-debuggen aan staat."
+      "cannot_connect": "Cannot connect to the Shield. Check the IP address and whether ADB network debugging is enabled."
     },
     "abort": {
-      "already_configured": "Ambient TV is al geconfigureerd."
+      "already_configured": "Ambient TV is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Lampen en instellingen",
+        "title": "Lights and settings",
         "data": {
-          "zone_left": "Links (hoek achter kijker)",
-          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
-          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
+          "shield_entity": "Shield media player (optional — for auto start/stop)",
+          "zone_left": "Left (corner behind viewer)",
+          "zone_right": "Right (corner behind viewer + mantle lamps)",
+          "zone_ceiling": "Ceiling (color temperature follows scene)",
           "update_interval_ms": "Update interval (ms)",
-          "transition": "Overgangstijd (seconden)",
-          "brightness_factor": "Helderheidsfactor",
-          "saturation_boost": "Verzadigingsboost",
-          "change_threshold": "Minimale kleurverandering (0-255)"
+          "transition": "Transition time (seconds)",
+          "brightness_factor": "Brightness factor",
+          "saturation_boost": "Saturation boost",
+          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
+          "change_threshold": "Minimum color change (0-255)"
         }
       }
     }

@@ -9,22 +9,18 @@
           "adb_port": "ADB port (default 5555)"
         }
       },
-      "lights": {
-        "title": "Lights per zone",
-        "description": "Assign lights to zones based on their position relative to the TV.",
+      "options": {
+        "title": "Lights and settings",
         "data": {
+          "shield_entity": "Shield media player (optional — for auto start/stop)",
           "zone_left": "Left (corner behind viewer)",
           "zone_right": "Right (corner behind viewer + mantle lamps)",
-          "zone_ceiling": "Ceiling (color temperature follows scene)"
-        }
-      },
-      "settings": {
-        "title": "Settings",
-        "data": {
+          "zone_ceiling": "Ceiling (color temperature follows scene)",
           "update_interval_ms": "Update interval (ms)",
           "transition": "Transition time (seconds)",
           "brightness_factor": "Brightness factor",
           "saturation_boost": "Saturation boost",
+          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
           "change_threshold": "Minimum color change (0-255)"
         }
       }
@@ -34,6 +30,25 @@
     },
     "abort": {
       "already_configured": "Ambient TV is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lights and settings",
+        "data": {
+          "shield_entity": "Shield media player (optional — for auto start/stop)",
+          "zone_left": "Left (corner behind viewer)",
+          "zone_right": "Right (corner behind viewer + mantle lamps)",
+          "zone_ceiling": "Ceiling (color temperature follows scene)",
+          "update_interval_ms": "Update interval (ms)",
+          "transition": "Transition time (seconds)",
+          "brightness_factor": "Brightness factor",
+          "saturation_boost": "Saturation boost",
+          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
+          "change_threshold": "Minimum color change (0-255)"
+        }
+      }
     }
   }
 }

@@ -12,6 +12,7 @@
       "options": {
         "title": "Lampen en instellingen",
         "data": {
+          "shield_entity": "Shield media player (optioneel — voor auto start/stop)",
           "zone_left": "Links (hoek achter kijker)",
           "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
           "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
@@ -19,6 +20,7 @@
           "transition": "Overgangstijd (seconden)",
           "brightness_factor": "Helderheidsfactor",
           "saturation_boost": "Verzadigingsboost",
+          "smoothing": "Vloeiendheid (0.1 = rustig, 1.0 = direct)",
           "change_threshold": "Minimale kleurverandering (0-255)"
         }
       }
@@ -35,6 +37,7 @@
       "init": {
         "title": "Lampen en instellingen",
         "data": {
+          "shield_entity": "Shield media player (optioneel — voor auto start/stop)",
           "zone_left": "Links (hoek achter kijker)",
           "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
           "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
@@ -42,6 +45,7 @@
           "transition": "Overgangstijd (seconden)",
           "brightness_factor": "Helderheidsfactor",
           "saturation_boost": "Verzadigingsboost",
+          "smoothing": "Vloeiendheid (0.1 = rustig, 1.0 = direct)",
           "change_threshold": "Minimale kleurverandering (0-255)"
         }
       }
