@@ -74,15 +74,24 @@ class AmbientTVCoordinator:
         self.hass.async_create_task(self._release_siblings())
 
     async def _release_siblings(self) -> None:
-        """Zet witte zusterentiteiten terug aan en geef ze terug aan Adaptive Lighting."""
+        """Zet witte zusterentiteiten terug aan en geef alle lampen terug aan Adaptive Lighting."""
+        has_al = self.hass.services.has_service("adaptive_lighting", "set_manual_control")
         for entity_id in self._lights:
+            # Geef zone-lamp zelf terug aan AL
+            if has_al:
+                await self.hass.services.async_call(
+                    "adaptive_lighting", "set_manual_control",
+                    {"entity_id": entity_id, "manual_control": False},
+                    blocking=False,
+                )
+            # Zet witte sibling aan en geef ook terug aan AL
             for sibling_id in await self._get_siblings(entity_id):
                 await self.hass.services.async_call(
                     "light", "turn_on",
                     {"entity_id": sibling_id},
                     blocking=False,
                 )
-                if self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+                if has_al:
                     await self.hass.services.async_call(
                         "adaptive_lighting", "set_manual_control",
                         {"entity_id": sibling_id, "manual_control": False},
@@ -345,6 +354,7 @@ class AmbientTVCoordinator:
             _LOGGER.debug("Lamp %s is uit — zet aan via ambilight", entity_id)
 
         supported = state.attributes.get("supported_color_modes", [])
+        sent = False
 
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
             r, g, b = zone_data["rgb"]
@@ -353,11 +363,21 @@ class AmbientTVCoordinator:
                 {"entity_id": entity_id, "rgb_color": [r, g, b], "transition": self._transition},
                 blocking=False,
             )
+            sent = True
         elif "color_temp" in supported:
             ct = zone_data.get("ct_kelvin") or self._rgb_to_ct(*zone_data["rgb"])
             brightness = zone_data.get("brightness") or self._scene_brightness(*zone_data["rgb"])
             await self.hass.services.async_call(
                 "light", "turn_on",
                 {"entity_id": entity_id, "color_temp_kelvin": ct, "brightness": brightness, "transition": self._transition},
+                blocking=False,
+            )
+            sent = True
+
+        # Voorkom dat Adaptive Lighting onze kleur meteen overschrijft
+        if sent and self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+            await self.hass.services.async_call(
+                "adaptive_lighting", "set_manual_control",
+                {"entity_id": entity_id, "manual_control": True},
                 blocking=False,
             )
