@@ -368,12 +368,20 @@ class AmbientTVCoordinator:
 
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
             r, g, b = zone_data["rgb"]
-            await self.hass.services.async_call(
-                "light", "turn_on",
-                {"entity_id": entity_id, "rgb_color": [r, g, b], "transition": self._transition},
-                blocking=False,
-            )
-            sent = True
+            if r == 0 and g == 0 and b == 0:
+                await self.hass.services.async_call(
+                    "light", "turn_off",
+                    {"entity_id": entity_id, "transition": self._transition},
+                    blocking=False,
+                )
+                sent = True
+            else:
+                await self.hass.services.async_call(
+                    "light", "turn_on",
+                    {"entity_id": entity_id, "rgb_color": [r, g, b], "transition": self._transition},
+                    blocking=False,
+                )
+                sent = True
         elif "color_temp" in supported:
             ct = zone_data.get("ct_kelvin") or self._rgb_to_ct(*zone_data["rgb"])
             brightness = zone_data.get("brightness") or self._scene_brightness(*zone_data["rgb"])
