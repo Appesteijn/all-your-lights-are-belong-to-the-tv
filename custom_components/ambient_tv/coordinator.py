@@ -259,6 +259,28 @@ class AmbientTVCoordinator:
         rb, gb, bb = b["rgb"]
         return max(abs(ra - rb), abs(ga - gb), abs(ba - bb))
 
+    async def _turn_off_white_siblings(self, entity_id: str) -> None:
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(self.hass)
+        entry = registry.async_get(entity_id)
+        if entry is None or entry.device_id is None:
+            return
+
+        for sibling in er.async_entries_for_device(registry, entry.device_id):
+            if sibling.entity_id == entity_id or sibling.domain != "light":
+                continue
+            state = self.hass.states.get(sibling.entity_id)
+            if state is None or state.state != "on":
+                continue
+            if state.attributes.get("color_mode") == "color_temp":
+                _LOGGER.debug("Wit kanaal %s uitschakelen (zuster van %s)", sibling.entity_id, entity_id)
+                await self.hass.services.async_call(
+                    "light", "turn_off",
+                    {"entity_id": sibling.entity_id, "transition": self._transition},
+                    blocking=False,
+                )
+
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
         if state is None or state.state != "on":
@@ -267,6 +289,7 @@ class AmbientTVCoordinator:
         supported = state.attributes.get("supported_color_modes", [])
 
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
+            await self._turn_off_white_siblings(entity_id)
             r, g, b = zone_data["rgb"]
             await self.hass.services.async_call(
                 "light", "turn_on",
