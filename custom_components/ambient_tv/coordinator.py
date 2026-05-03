@@ -72,16 +72,20 @@ class AmbientTVCoordinator:
         self.hass.async_create_task(self._release_siblings())
 
     async def _release_siblings(self) -> None:
-        """Geef witte zusterentiteiten terug aan Adaptive Lighting."""
-        if not self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
-            return
+        """Zet witte zusterentiteiten terug aan en geef ze terug aan Adaptive Lighting."""
         for entity_id in self._lights:
             for sibling_id in await self._get_siblings(entity_id):
                 await self.hass.services.async_call(
-                    "adaptive_lighting", "set_manual_control",
-                    {"entity_id": sibling_id, "manual_control": False},
+                    "light", "turn_on",
+                    {"entity_id": sibling_id},
                     blocking=False,
                 )
+                if self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+                    await self.hass.services.async_call(
+                        "adaptive_lighting", "set_manual_control",
+                        {"entity_id": sibling_id, "manual_control": False},
+                        blocking=False,
+                    )
 
     @property
     def _should_run(self) -> bool:
@@ -142,6 +146,7 @@ class AmbientTVCoordinator:
             if not self._shield_active:
                 self._last_zone_colors.clear()
                 self._smoothed_zone_colors.clear()
+                self.hass.async_create_task(self._release_siblings())
 
     def _on_stop(self, _event) -> None:
         self.stop()
