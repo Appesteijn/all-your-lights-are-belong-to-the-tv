@@ -56,6 +56,7 @@ class AmbientTVCoordinator:
         self._running = False
         self._enabled = True
         self._shield_active = True
+        self._shield_event: asyncio.Event = asyncio.Event()
         self._remove_shield_listener = None
 
     @property
@@ -87,10 +88,6 @@ class AmbientTVCoordinator:
                         blocking=False,
                     )
 
-    @property
-    def _should_run(self) -> bool:
-        return self._enabled and self._shield_active
-
     def start(self) -> None:
         self._running = True
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
@@ -112,6 +109,10 @@ class AmbientTVCoordinator:
             if state:
                 self._shield_active = state.state not in _SHIELD_OFF_STATES
                 _LOGGER.info("Shield staat op '%s' — ambilight %s", state.state, "actief" if self._shield_active else "inactief")
+        if self._shield_active:
+            self._shield_event.set()
+        else:
+            self._shield_event.clear()
 
         self._task = self.hass.async_create_task(self._loop())
 
@@ -143,9 +144,13 @@ class AmbientTVCoordinator:
         self._shield_active = new_state.state not in _SHIELD_OFF_STATES
         if self._shield_active != was_active:
             _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "gestart" if self._shield_active else "gestopt")
-            if not self._shield_active:
+            if self._shield_active:
+                self._shield_event.set()
+            else:
+                self._shield_event.clear()
                 self._last_zone_colors.clear()
                 self._smoothed_zone_colors.clear()
+                self._device = None
                 self.hass.async_create_task(self._release_siblings())
 
     def _on_stop(self, _event) -> None:
@@ -161,8 +166,9 @@ class AmbientTVCoordinator:
     async def _loop(self) -> None:
         _LOGGER.info("Ambient TV loop gestart — %d lamp(en) geconfigureerd: %s", len(self._lights), list(self._lights.keys()))
         while self._running:
-            if not self._should_run:
-                await asyncio.sleep(2)
+            await self._shield_event.wait()
+            if not self._enabled:
+                await asyncio.sleep(1)
                 continue
             try:
                 if self._device is None:
