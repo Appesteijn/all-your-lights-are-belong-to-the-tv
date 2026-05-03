@@ -27,3 +27,4 @@ ZONE_LABELS = {
 }
 
 ADB_KEY_PATH = ".adb/adbkey"
+CONF_SHIELD_ENTITY = "shield_entity"

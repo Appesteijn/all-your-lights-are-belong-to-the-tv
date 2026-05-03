@@ -12,6 +12,7 @@ from .const import (
     DEFAULT_BRIGHTNESS_FACTOR,
     DEFAULT_SATURATION_BOOST,
     DEFAULT_CHANGE_THRESHOLD,
+    CONF_SHIELD_ENTITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +37,9 @@ def _lights_to_zones(lights: dict) -> dict:
 
 def _options_schema(suggested: dict) -> vol.Schema:
     return vol.Schema({
+        vol.Optional(CONF_SHIELD_ENTITY): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="media_player", multiple=False)
+        ),
         vol.Optional("zone_left"): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="light", multiple=True)
         ),

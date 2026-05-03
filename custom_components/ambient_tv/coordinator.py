@@ -6,6 +6,7 @@ from pathlib import Path
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
     DOMAIN,
@@ -16,6 +17,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_MS,
     ADB_KEY_PATH,
     ZONE_CEILING,
+    CONF_SHIELD_ENTITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,6 +31,8 @@ ZONE_BOUNDS = {
     "ceiling": (0.00, 1.00),
 }
 
+_SHIELD_OFF_STATES = {"off", "standby", "unavailable", "idle"}
+
 
 class AmbientTVCoordinator:
     def __init__(self, hass: HomeAssistant, entry) -> None:
@@ -41,11 +45,31 @@ class AmbientTVCoordinator:
         self._brightness_factor: float = data.get("brightness_factor", DEFAULT_BRIGHTNESS_FACTOR)
         self._saturation_boost: float = data.get("saturation_boost", DEFAULT_SATURATION_BOOST)
         self._threshold: int = data.get("change_threshold", DEFAULT_CHANGE_THRESHOLD)
+        self._shield_entity: str | None = data.get(CONF_SHIELD_ENTITY)
         self._device = None
         self._last_zone_colors: dict = {}
         self._key_path = Path(hass.config.config_dir) / ADB_KEY_PATH
         self._task: asyncio.Task | None = None
         self._running = False
+        self._enabled = True
+        self._shield_active = True
+        self._remove_shield_listener = None
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def enable(self) -> None:
+        self._enabled = True
+        _LOGGER.info("Ambilight ingeschakeld")
+
+    def disable(self) -> None:
+        self._enabled = False
+        _LOGGER.info("Ambilight uitgeschakeld")
+
+    @property
+    def _should_run(self) -> bool:
+        return self._enabled and self._shield_active
 
     def start(self) -> None:
         self._running = True
@@ -53,19 +77,44 @@ class AmbientTVCoordinator:
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
 
     def _on_started(self, _event) -> None:
+        if self._shield_entity:
+            self._remove_shield_listener = async_track_state_change_event(
+                self.hass, [self._shield_entity], self._on_shield_state_change
+            )
+            state = self.hass.states.get(self._shield_entity)
+            if state:
+                self._shield_active = state.state not in _SHIELD_OFF_STATES
+                _LOGGER.info("Shield staat op '%s' — ambilight %s", state.state, "actief" if self._shield_active else "inactief")
+
         self._task = self.hass.async_create_task(self._loop())
+
+    def _on_shield_state_change(self, event) -> None:
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        was_active = self._shield_active
+        self._shield_active = new_state.state not in _SHIELD_OFF_STATES
+        if self._shield_active != was_active:
+            _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "gestart" if self._shield_active else "gestopt")
+            if not self._shield_active:
+                self._last_zone_colors.clear()
 
     def _on_stop(self, _event) -> None:
         self.stop()
 
     def stop(self) -> None:
         self._running = False
+        if self._remove_shield_listener:
+            self._remove_shield_listener()
         if self._task:
             self._task.cancel()
 
     async def _loop(self) -> None:
         _LOGGER.info("Ambient TV loop gestart — %d lamp(en) geconfigureerd: %s", len(self._lights), list(self._lights.keys()))
         while self._running:
+            if not self._should_run:
+                await asyncio.sleep(2)
+                continue
             try:
                 if self._device is None:
                     await self._connect()
@@ -121,7 +170,6 @@ class AmbientTVCoordinator:
     async def _capture(self):
         from PIL import Image
 
-        # decode=False geeft raw bytes terug — geen base64 nodig
         raw = await asyncio.wait_for(
             self._device.shell("screencap", decode=False),
             timeout=15,
@@ -183,7 +231,7 @@ class AmbientTVCoordinator:
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
-        if state is None or state.state == "unavailable":
+        if state is None or state.state != "on":
             return
 
         supported = state.attributes.get("supported_color_modes", [])
