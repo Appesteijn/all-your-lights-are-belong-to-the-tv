@@ -280,13 +280,12 @@ class AmbientTVCoordinator:
             state = self.hass.states.get(sibling.entity_id)
             if state is None or state.state != "on":
                 continue
-            if state.attributes.get("color_mode") == "color_temp":
-                _LOGGER.debug("Wit kanaal %s uitschakelen (zuster van %s)", sibling.entity_id, entity_id)
-                await self.hass.services.async_call(
-                    "light", "turn_off",
-                    {"entity_id": sibling.entity_id, "transition": self._transition},
-                    blocking=False,
-                )
+            _LOGGER.debug("Zuster-kanaal %s uitschakelen (zelfde apparaat als %s)", sibling.entity_id, entity_id)
+            await self.hass.services.async_call(
+                "light", "turn_off",
+                {"entity_id": sibling.entity_id, "transition": self._transition},
+                blocking=False,
+            )
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
