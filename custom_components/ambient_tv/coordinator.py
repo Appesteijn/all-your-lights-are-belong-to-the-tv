@@ -76,10 +76,17 @@ class AmbientTVCoordinator:
 
     def start(self) -> None:
         self._running = True
-        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._on_started)
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
+        if self.hass.is_running:
+            # HA al opgestart (bijv. reload na HACS-installatie)
+            self._begin()
+        else:
+            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._on_started)
 
-    def _on_started(self, _event) -> None:
+    async def _on_started(self, _event) -> None:
+        self._begin()
+
+    def _begin(self) -> None:
         if self._shield_entity:
             self._remove_shield_listener = async_track_state_change_event(
                 self.hass, [self._shield_entity], self._on_shield_state_change
