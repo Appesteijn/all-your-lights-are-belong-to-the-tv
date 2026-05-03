@@ -32,7 +32,7 @@ ZONE_BOUNDS = {
     "ceiling": (0.00, 1.00),
 }
 
-_SHIELD_OFF_STATES = {"off", "standby", "unavailable", "idle"}
+_SHIELD_OFF_STATES = {"off", "standby", "unavailable"}
 
 
 class AmbientTVCoordinator:
