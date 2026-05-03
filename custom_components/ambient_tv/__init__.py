@@ -23,7 +23,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     coordinator: AmbientTVCoordinator = hass.data[DOMAIN].pop(entry.entry_id, None)
     if coordinator:
-        coordinator.stop()
+        await coordinator.async_stop()
     return True
 
 

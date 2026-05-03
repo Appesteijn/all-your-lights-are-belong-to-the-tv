@@ -161,7 +161,8 @@ class AmbientTVCoordinator:
                 self._last_zone_colors.clear()
                 self._smoothed_zone_colors.clear()
                 self._device = None
-                self.hass.async_create_task(self._release_siblings())
+                if not self.hass.is_stopping:
+                    self.hass.async_create_task(self._release_siblings())
 
     def _on_stop(self, _event) -> None:
         self.stop()
@@ -172,6 +173,10 @@ class AmbientTVCoordinator:
             self._remove_shield_listener()
         if self._task:
             self._task.cancel()
+
+    async def async_stop(self) -> None:
+        self.stop()
+        await self._release_siblings()
 
     async def _loop(self) -> None:
         _LOGGER.info("Ambient TV loop gestart — %d lamp(en) geconfigureerd: %s", len(self._lights), list(self._lights.keys()))
