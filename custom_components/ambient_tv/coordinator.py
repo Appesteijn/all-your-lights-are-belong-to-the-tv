@@ -69,6 +69,19 @@ class AmbientTVCoordinator:
     def disable(self) -> None:
         self._enabled = False
         _LOGGER.info("Ambilight uitgeschakeld")
+        self.hass.async_create_task(self._release_siblings())
+
+    async def _release_siblings(self) -> None:
+        """Geef witte zusterentiteiten terug aan Adaptive Lighting."""
+        if not self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+            return
+        for entity_id in self._lights:
+            for sibling_id in await self._get_siblings(entity_id):
+                await self.hass.services.async_call(
+                    "adaptive_lighting", "set_manual_control",
+                    {"entity_id": sibling_id, "manual_control": False},
+                    blocking=False,
+                )
 
     @property
     def _should_run(self) -> bool:
@@ -266,6 +279,36 @@ class AmbientTVCoordinator:
         rb, gb, bb = b["rgb"]
         return max(abs(ra - rb), abs(ga - gb), abs(ba - bb))
 
+    async def _get_siblings(self, entity_id: str) -> list[str]:
+        from homeassistant.helpers import entity_registry as er
+        registry = er.async_get(self.hass)
+        entry = registry.async_get(entity_id)
+        if entry is None or entry.device_id is None:
+            return []
+        return [
+            s.entity_id for s in er.async_entries_for_device(registry, entry.device_id)
+            if s.entity_id != entity_id and s.domain == "light"
+        ]
+
+    async def _turn_off_white_siblings(self, entity_id: str) -> None:
+        for sibling_id in await self._get_siblings(entity_id):
+            state = self.hass.states.get(sibling_id)
+            if state is None or state.state != "on":
+                continue
+            _LOGGER.debug("Wit-kanaal %s uitschakelen", sibling_id)
+            await self.hass.services.async_call(
+                "light", "turn_off",
+                {"entity_id": sibling_id, "transition": self._transition},
+                blocking=False,
+            )
+            # Vertel Adaptive Lighting dit licht niet te herstarten
+            if self.hass.services.has_service("adaptive_lighting", "set_manual_control"):
+                await self.hass.services.async_call(
+                    "adaptive_lighting", "set_manual_control",
+                    {"entity_id": sibling_id, "manual_control": True},
+                    blocking=False,
+                )
+
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
         if state is None or state.state != "on":
@@ -274,6 +317,7 @@ class AmbientTVCoordinator:
         supported = state.attributes.get("supported_color_modes", [])
 
         if zone_data["type"] == "rgb" and any(m in supported for m in ("xy", "hs", "rgb")):
+            await self._turn_off_white_siblings(entity_id)
             r, g, b = zone_data["rgb"]
             await self.hass.services.async_call(
                 "light", "turn_on",
