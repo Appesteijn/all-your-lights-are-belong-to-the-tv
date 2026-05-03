@@ -32,7 +32,7 @@ ZONE_BOUNDS = {
     "ceiling": (0.00, 1.00),
 }
 
-_SHIELD_OFF_STATES = {"standby", "unavailable"}
+_SHIELD_OFF_STATES = {"off", "standby", "unavailable"}
 
 
 class AmbientTVCoordinator:
@@ -60,6 +60,7 @@ class AmbientTVCoordinator:
         self._shield_event: asyncio.Event = asyncio.Event()
         self._remove_shield_listener = None
         self._al_switches: list[str] = []
+        self._retry_s: float = 5.0
 
     @property
     def enabled(self) -> bool:
@@ -151,6 +152,7 @@ class AmbientTVCoordinator:
         if self._shield_active != was_active:
             _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "gestart" if self._shield_active else "gestopt")
             if self._shield_active:
+                self._retry_s = 5.0
                 self._shield_event.set()
             else:
                 self._shield_event.clear()
@@ -222,6 +224,7 @@ class AmbientTVCoordinator:
                 if updates:
                     _LOGGER.debug("Frame verwerkt — %d lamp(en) bijgewerkt", updates)
 
+                self._retry_s = 5.0
                 await asyncio.sleep(self._update_interval_s)
 
             except asyncio.CancelledError:
@@ -230,10 +233,11 @@ class AmbientTVCoordinator:
                 from adb_shell.exceptions import TcpTimeoutException
                 self._device = None
                 if isinstance(err, TcpTimeoutException):
-                    _LOGGER.debug("ADB timeout (Shield slapend?), herverbind na 5s")
+                    _LOGGER.debug("ADB timeout (Shield slapend?), herverbind na %.0fs", self._retry_s)
                 else:
-                    _LOGGER.exception("Capture fout — loop paused 5s")
-                await asyncio.sleep(5)
+                    _LOGGER.exception("Capture fout — loop paused %.0fs", self._retry_s)
+                await asyncio.sleep(self._retry_s)
+                self._retry_s = min(60.0, self._retry_s * 2)
 
     async def _connect(self) -> None:
         from adb_shell.adb_device_async import AdbDeviceTcpAsync
