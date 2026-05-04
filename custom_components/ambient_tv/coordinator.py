@@ -345,6 +345,7 @@ class AmbientTVCoordinator:
 
     async def _turn_off_white_siblings(self, entity_id: str) -> None:
         for sibling_id in await self._get_siblings(entity_id):
+            await self._set_al_manual_control(sibling_id, True)
             state = self.hass.states.get(sibling_id)
             if state is None or state.state != "on":
                 continue
@@ -354,7 +355,6 @@ class AmbientTVCoordinator:
                 {"entity_id": sibling_id, "transition": self._transition},
                 blocking=False,
             )
-            await self._set_al_manual_control(sibling_id, True)
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
