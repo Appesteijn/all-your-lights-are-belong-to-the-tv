@@ -73,7 +73,8 @@ class AmbientTVCoordinator:
     def disable(self) -> None:
         self._enabled = False
         _LOGGER.info("Ambilight uitgeschakeld")
-        self.hass.async_create_task(self._release_siblings())
+        if not self.hass.is_stopping:
+            self.hass.async_create_task(self._release_siblings())
 
     async def _release_siblings(self) -> None:
         """Zet witte zusterentiteiten terug aan en geef alle lampen terug aan Adaptive Lighting."""
@@ -143,7 +144,7 @@ class AmbientTVCoordinator:
             "brightness": int(a * current["brightness"] + (1-a) * previous["brightness"]),
         }
 
-    def _on_shield_state_change(self, event) -> None:
+    async def _on_shield_state_change(self, event) -> None:
         new_state = event.data.get("new_state")
         if new_state is None:
             return
@@ -159,8 +160,7 @@ class AmbientTVCoordinator:
                 self._last_zone_colors.clear()
                 self._smoothed_zone_colors.clear()
                 self._device = None
-                if not self.hass.is_stopping:
-                    self.hass.async_create_task(self._release_siblings())
+                await self._release_siblings()
 
     def _on_stop(self, _event) -> None:
         self.stop()
@@ -358,7 +358,7 @@ class AmbientTVCoordinator:
 
     async def _update_light(self, entity_id, zone_data):
         state = self.hass.states.get(entity_id)
-        if state is None:
+        if state is None or state.state == "unavailable":
             return
         if state.state != "on":
             _LOGGER.debug("Lamp %s is uit — zet aan via ambilight", entity_id)
