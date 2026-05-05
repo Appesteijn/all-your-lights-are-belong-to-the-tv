@@ -16,11 +16,11 @@ async def async_setup_entry(
 
 class AmbientTVSwitch(SwitchEntity):
     _attr_icon = "mdi:television-ambient-light"
-    _attr_translation_key = "ambilight"
+    _attr_translation_key = "screen_sync"
 
     def __init__(self, coordinator: AmbientTVCoordinator, entry: ConfigEntry) -> None:
         self._coordinator = coordinator
-        self._attr_name = "Ambilight"
+        self._attr_name = "Screen sync"
         self._attr_unique_id = f"{entry.entry_id}_switch"
 
     @property

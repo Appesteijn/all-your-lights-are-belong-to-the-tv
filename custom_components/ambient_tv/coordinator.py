@@ -70,11 +70,11 @@ class AmbientTVCoordinator:
 
     def enable(self) -> None:
         self._enabled = True
-        _LOGGER.info("Ambilight enabled")
+        _LOGGER.info("Screen sync enabled")
 
     def disable(self) -> None:
         self._enabled = False
-        _LOGGER.info("Ambilight disabled")
+        _LOGGER.info("Screen sync disabled")
         if not self.hass.is_stopping:
             self.hass.async_create_task(self._release_siblings())
 
@@ -118,7 +118,7 @@ class AmbientTVCoordinator:
             state = self.hass.states.get(self._shield_entity)
             if state:
                 self._shield_active = state.state not in _SHIELD_OFF_STATES
-                _LOGGER.info("Shield state is '%s' — ambilight %s", state.state, "active" if self._shield_active else "inactive")
+                _LOGGER.info("Shield state is '%s' — screen sync %s", state.state, "active" if self._shield_active else "inactive")
         if self._shield_active:
             self._shield_event.set()
         else:
@@ -153,7 +153,7 @@ class AmbientTVCoordinator:
         was_active = self._shield_active
         self._shield_active = new_state.state not in _SHIELD_OFF_STATES
         if self._shield_active != was_active:
-            _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "started" if self._shield_active else "stopped")
+            _LOGGER.info("Shield → '%s': screen sync %s", new_state.state, "started" if self._shield_active else "stopped")
             if self._shield_active:
                 self._retry_s = 5.0
                 self._shield_event.set()
@@ -366,7 +366,7 @@ class AmbientTVCoordinator:
         if state is None or state.state == "unavailable":
             return
         if state.state != "on":
-            _LOGGER.debug("Light %s is off — turning on via ambilight", entity_id)
+            _LOGGER.debug("Light %s is off — turning on via screen sync", entity_id)
 
         supported = state.attributes.get("supported_color_modes", [])
         sent = False

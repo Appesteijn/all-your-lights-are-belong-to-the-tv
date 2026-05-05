@@ -1,6 +1,6 @@
 # All Your Lights Are Belong to the TV
 
-A Home Assistant custom integration that creates a real-time Ambilight effect by capturing your Android device's screen via ADB and driving your smart lights to match the colors on screen.
+A Home Assistant custom integration that creates a real-time screen color sync effect by capturing your Android device's screen via ADB and driving your smart lights to match the colors on screen.
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
@@ -65,11 +65,11 @@ All zones are optional — leave a zone empty if you have no lights there.
 
 ### 4. Select a media player entity (optional)
 
-If you select your device's **media player entity**, the ambilight automatically starts when the device turns on and stops when it turns off or goes to standby.
+If you select your device's **media player entity**, screen sync automatically starts when the device turns on and stops when it turns off or goes to standby.
 
 ### 5. Switch entity
 
-A `switch.ambilight` entity is created automatically. Use it to toggle the effect on/off from your dashboard or automations.
+A `switch.screen_sync` entity is created automatically. Use it to toggle the effect on/off from your dashboard or automations.
 
 ## Settings
 
@@ -94,5 +94,5 @@ When **Suppress sibling channels** is enabled, the integration automatically tur
 ## Notes
 
 - The integration only updates lights that are already **on** — it does not turn lights on by itself
-- When the media player goes to standby or off, the ambilight pauses automatically (if configured)
+- When the media player goes to standby or off, screen sync pauses automatically (if configured)
 - The ADB key pair is stored at `.adb/adbkey` inside your HA config directory and persists across restarts

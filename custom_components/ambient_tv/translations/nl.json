@@ -30,7 +30,7 @@
           "suppress_siblings": "GLEDOPTO RGBW: wit-kanaal onderdrukken"
         },
         "data_description": {
-          "shield_entity": "Als ingesteld start en stopt het ambilight automatisch met deze media player",
+          "shield_entity": "Als ingesteld start en stopt screen sync automatisch met deze media player",
           "zone_left": "Lampen links van de tv — aangestuurd door de linker 30% van het scherm (RGB)",
           "zone_right": "Lampen rechts van de tv — aangestuurd door de rechter 30% van het scherm (RGB)",
           "zone_ceiling": "Lampen boven de tv — aangestuurd door de bovenste helft van het scherm (kleurtemperatuur)",
@@ -71,7 +71,7 @@
           "suppress_siblings": "GLEDOPTO RGBW: wit-kanaal onderdrukken"
         },
         "data_description": {
-          "shield_entity": "Als ingesteld start en stopt het ambilight automatisch met deze media player",
+          "shield_entity": "Als ingesteld start en stopt screen sync automatisch met deze media player",
           "zone_left": "Lampen links van de tv — aangestuurd door de linker 30% van het scherm (RGB)",
           "zone_right": "Lampen rechts van de tv — aangestuurd door de rechter 30% van het scherm (RGB)",
           "zone_ceiling": "Lampen boven de tv — aangestuurd door de bovenste helft van het scherm (kleurtemperatuur)",

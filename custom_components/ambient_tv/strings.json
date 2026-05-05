@@ -30,7 +30,7 @@
           "suppress_siblings": "GLEDOPTO RGBW: suppress white channel"
         },
         "data_description": {
-          "shield_entity": "When set, the ambilight automatically starts and stops with this media player",
+          "shield_entity": "When set, screen sync automatically starts and stops with this media player",
           "zone_left": "Lights on the left side of the TV — driven by the left 30% of the screen (RGB)",
           "zone_right": "Lights on the right side of the TV — driven by the right 30% of the screen (RGB)",
           "zone_ceiling": "Lights above the TV — driven by the top half of the screen (color temperature)",
@@ -71,7 +71,7 @@
           "suppress_siblings": "GLEDOPTO RGBW: suppress white channel"
         },
         "data_description": {
-          "shield_entity": "When set, the ambilight automatically starts and stops with this media player",
+          "shield_entity": "When set, screen sync automatically starts and stops with this media player",
           "zone_left": "Lights on the left side of the TV — driven by the left 30% of the screen (RGB)",
           "zone_right": "Lights on the right side of the TV — driven by the right 30% of the screen (RGB)",
           "zone_ceiling": "Lights above the TV — driven by the top half of the screen (color temperature)",
