@@ -8,7 +8,7 @@ A Home Assistant custom integration that creates a real-time Ambilight effect by
 
 - **NVIDIA Shield** (or other Android device with ADB over TCP)
 - **Home Assistant** with ZHA or any light integration
-- Lights with color support (RGB/XY/HS) for left/right zones
+- Lights with color support (RGB/XY/HS) for left/right/bottom zones
 - Lights with color temperature support for ceiling zone (optional)
 
 ## Installation via HACS
@@ -35,13 +35,28 @@ Enter the Shield's IP address (default port 5555).
 
 ### 3. Configure zones
 
-Assign your lights to zones based on their position relative to the TV:
+Assign your lights to zones based on their position relative to the TV. Each zone analyzes a different region of the screen:
 
-| Zone | Position | Mode |
-|---|---|---|
-| **Left** | Left side / corner behind viewer | RGB color |
-| **Right** | Right side / corner behind viewer | RGB color |
-| **Ceiling** | Above the room | Color temperature |
+```
+Screen region used per zone:
+
+┌──────────────────────────────────────────────┐
+│  LEFT   │                          │  RIGHT  │  ← full height
+│  0–30%  │                          │ 70–100% │
+│         ├──────── CEILING ─────────┤         │  ← top half (y 0–50%)
+│         │                          │         │
+│         ├──────── BOTTOM  ─────────┤         │  ← bottom half (y 50–100%)
+└──────────────────────────────────────────────┘
+```
+
+| Zone | Screen region | Position | Mode |
+|---|---|---|---|
+| **Left** | Left 30%, full height | Left side / corner behind viewer | RGB |
+| **Right** | Right 30%, full height | Right side / corner behind viewer | RGB |
+| **Ceiling** | Full width, top 50% | Above the room | Color temperature |
+| **Bottom** | Full width, bottom 50% | Below / in front of TV | RGB |
+
+All zones are optional — leave a zone empty if you have no lights in that position.
 
 Optionally select your Shield's **media player entity** to automatically start/stop the effect when the Shield turns on or off.
 

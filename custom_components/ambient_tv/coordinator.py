@@ -27,9 +27,10 @@ CAPTURE_W = 64
 CAPTURE_H = 36
 
 ZONE_BOUNDS = {
-    "left":    (0.00, 0.30),
-    "right":   (0.70, 1.00),
-    "ceiling": (0.00, 1.00),
+    "left":    (0.00, 0.30, 0.00, 1.00),
+    "right":   (0.70, 1.00, 0.00, 1.00),
+    "ceiling": (0.00, 1.00, 0.00, 0.50),
+    "bottom":  (0.00, 1.00, 0.50, 1.00),
 }
 
 _SHIELD_OFF_STATES = {"off", "standby", "unavailable"}
@@ -48,6 +49,7 @@ class AmbientTVCoordinator:
         self._threshold: int = data.get("change_threshold", DEFAULT_CHANGE_THRESHOLD)
         self._smoothing: float = data.get("smoothing", DEFAULT_SMOOTHING)
         self._shield_entity: str | None = data.get(CONF_SHIELD_ENTITY)
+        self._suppress_siblings: bool = data.get("suppress_siblings", True)
         self._update_interval_s: float = data.get("update_interval_ms", DEFAULT_UPDATE_INTERVAL_MS) / 1000
         self._device = None
         self._last_zone_colors: dict = {}
@@ -68,16 +70,17 @@ class AmbientTVCoordinator:
 
     def enable(self) -> None:
         self._enabled = True
-        _LOGGER.info("Ambilight ingeschakeld")
+        _LOGGER.info("Ambilight enabled")
 
     def disable(self) -> None:
         self._enabled = False
-        _LOGGER.info("Ambilight uitgeschakeld")
+        _LOGGER.info("Ambilight disabled")
         if not self.hass.is_stopping:
             self.hass.async_create_task(self._release_siblings())
 
     async def _release_siblings(self) -> None:
-        """Zet witte zusterentiteiten terug aan en geef alle lampen terug aan Adaptive Lighting."""
+        if not self._suppress_siblings:
+            return
         for entity_id in self._lights:
             await self._set_al_manual_control(entity_id, False)
             for sibling_id in await self._get_siblings(entity_id):
@@ -92,7 +95,6 @@ class AmbientTVCoordinator:
         self._running = True
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
         if self.hass.is_running:
-            # HA al opgestart (bijv. reload na HACS-installatie)
             self._begin()
         else:
             self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._on_started)
@@ -107,7 +109,7 @@ class AmbientTVCoordinator:
             and not any(x in s.entity_id for x in ("sleep_mode", "adapt_color", "adapt_brightness", "pre_release"))
         ]
         if self._al_switches:
-            _LOGGER.info("Adaptive Lighting schakelaars gevonden: %s", self._al_switches)
+            _LOGGER.info("Adaptive Lighting switches found: %s", self._al_switches)
 
         if self._shield_entity:
             self._remove_shield_listener = async_track_state_change_event(
@@ -116,7 +118,7 @@ class AmbientTVCoordinator:
             state = self.hass.states.get(self._shield_entity)
             if state:
                 self._shield_active = state.state not in _SHIELD_OFF_STATES
-                _LOGGER.info("Shield staat op '%s' — ambilight %s", state.state, "actief" if self._shield_active else "inactief")
+                _LOGGER.info("Shield state is '%s' — ambilight %s", state.state, "active" if self._shield_active else "inactive")
         if self._shield_active:
             self._shield_event.set()
         else:
@@ -151,7 +153,7 @@ class AmbientTVCoordinator:
         was_active = self._shield_active
         self._shield_active = new_state.state not in _SHIELD_OFF_STATES
         if self._shield_active != was_active:
-            _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "gestart" if self._shield_active else "gestopt")
+            _LOGGER.info("Shield → '%s': ambilight %s", new_state.state, "started" if self._shield_active else "stopped")
             if self._shield_active:
                 self._retry_s = 5.0
                 self._shield_event.set()
@@ -177,7 +179,7 @@ class AmbientTVCoordinator:
         await self._release_siblings()
 
     async def _loop(self) -> None:
-        _LOGGER.info("Ambient TV loop gestart — %d lamp(en) geconfigureerd: %s", len(self._lights), list(self._lights.keys()))
+        _LOGGER.info("Ambient TV loop started — %d light(s) configured: %s", len(self._lights), list(self._lights.keys()))
         while self._running:
             await self._shield_event.wait()
             if not self._enabled:
@@ -196,8 +198,7 @@ class AmbientTVCoordinator:
                 }
                 self._smoothed_zone_colors = smoothed_zones
 
-                # Als een geconfigureerde lamp uit staat, verwijder zijn zone uit de cache
-                # zodat hij volgende frame als "changed" wordt behandeld en weer aan gaat.
+                # Clear zone cache for lights that are off so they re-trigger on the next frame.
                 for entity_id, zone in self._lights.items():
                     s = self.hass.states.get(entity_id)
                     if s is not None and s.state != "on":
@@ -222,7 +223,7 @@ class AmbientTVCoordinator:
                 self._last_zone_colors.update(changed)
 
                 if updates:
-                    _LOGGER.debug("Frame verwerkt — %d lamp(en) bijgewerkt", updates)
+                    _LOGGER.debug("Frame processed — %d light(s) updated", updates)
 
                 self._retry_s = 5.0
                 await asyncio.sleep(self._update_interval_s)
@@ -233,9 +234,9 @@ class AmbientTVCoordinator:
                 from adb_shell.exceptions import TcpTimeoutException
                 self._device = None
                 if isinstance(err, TcpTimeoutException):
-                    _LOGGER.debug("ADB timeout (Shield slapend?), herverbind na %.0fs", self._retry_s)
+                    _LOGGER.debug("ADB timeout (Shield sleeping?), reconnecting in %.0fs", self._retry_s)
                 else:
-                    _LOGGER.exception("Capture fout — loop paused %.0fs", self._retry_s)
+                    _LOGGER.exception("Capture error — loop paused %.0fs", self._retry_s)
                 await asyncio.sleep(self._retry_s)
                 self._retry_s = min(60.0, self._retry_s * 2)
 
@@ -248,7 +249,7 @@ class AmbientTVCoordinator:
             self._device.connect(rsa_keys=[signer], auth_timeout_s=30),
             timeout=35,
         )
-        _LOGGER.info("Verbonden met Shield op %s:%d", self._host, self._port)
+        _LOGGER.info("Connected to device at %s:%d", self._host, self._port)
 
     def _get_or_create_signer(self):
         from adb_shell.auth.sign_pythonrsa import PythonRSASigner
@@ -266,7 +267,7 @@ class AmbientTVCoordinator:
             self._device.shell("screencap", decode=False, transport_timeout_s=30),
             timeout=35,
         )
-        # screencap raw formaat: 4B width, 4B height, 4B pixel_format, RGBA pixels
+        # screencap raw format: 4B width, 4B height, 4B pixel_format, RGBA pixels
         w, h = struct.unpack_from("<II", raw, 0)
         img = Image.frombytes("RGBA", (w, h), raw[12:]).convert("RGB")
         return img.resize((CAPTURE_W, CAPTURE_H), Image.LANCZOS)
@@ -277,10 +278,12 @@ class AmbientTVCoordinator:
         result = {}
         w, h = img.size
 
-        for zone, (x_start_pct, x_end_pct) in ZONE_BOUNDS.items():
+        for zone, (x_start_pct, x_end_pct, y_start_pct, y_end_pct) in ZONE_BOUNDS.items():
             x1 = int(w * x_start_pct)
             x2 = int(w * x_end_pct)
-            region = img.crop((x1, 0, x2, h))
+            y1 = int(h * y_start_pct)
+            y2 = int(h * y_end_pct)
+            region = img.crop((x1, y1, x2, y2))
             stat = ImageStat.Stat(region)
             r, g, b = (int(v) for v in stat.mean[:3])
 
@@ -344,12 +347,14 @@ class AmbientTVCoordinator:
         )
 
     async def _turn_off_white_siblings(self, entity_id: str) -> None:
+        if not self._suppress_siblings:
+            return
         for sibling_id in await self._get_siblings(entity_id):
             await self._set_al_manual_control(sibling_id, True)
             state = self.hass.states.get(sibling_id)
             if state is None or state.state != "on":
                 continue
-            _LOGGER.debug("Wit-kanaal %s uitschakelen", sibling_id)
+            _LOGGER.debug("Turning off white channel %s", sibling_id)
             await self.hass.services.async_call(
                 "light", "turn_off",
                 {"entity_id": sibling_id, "transition": self._transition},
@@ -361,7 +366,7 @@ class AmbientTVCoordinator:
         if state is None or state.state == "unavailable":
             return
         if state.state != "on":
-            _LOGGER.debug("Lamp %s is uit — zet aan via ambilight", entity_id)
+            _LOGGER.debug("Light %s is off — turning on via ambilight", entity_id)
 
         supported = state.attributes.get("supported_color_modes", [])
         sent = False

@@ -20,12 +20,7 @@ DEFAULT_SMOOTHING = 0.3
 ZONE_LEFT = "left"
 ZONE_RIGHT = "right"
 ZONE_CEILING = "ceiling"
-
-ZONE_LABELS = {
-    ZONE_LEFT: "Links (hoek achter kijker)",
-    ZONE_RIGHT: "Rechts (hoek achter kijker + schouw)",
-    ZONE_CEILING: "Plafond (kleurtemperatuur)",
-}
+ZONE_BOTTOM = "bottom"
 
 ADB_KEY_PATH = ".adb/adbkey"
 CONF_SHIELD_ENTITY = "shield_entity"

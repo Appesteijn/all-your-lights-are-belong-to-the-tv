@@ -2,31 +2,51 @@
   "config": {
     "step": {
       "user": {
-        "title": "Shield connection",
-        "description": "Enable ADB network debugging on the Shield:\nSettings → Device Preferences → Developer Options → Network debugging",
+        "title": "Android device connection",
+        "description": "Enable ADB network debugging on your Android device:\nSettings → Device Preferences → Developer Options → Network debugging",
         "data": {
-          "adb_host": "Shield IP address",
-          "adb_port": "ADB port (default 5555)"
+          "adb_host": "Device IP address",
+          "adb_port": "ADB port"
+        },
+        "data_description": {
+          "adb_host": "IP address of your Android TV / Shield / Fire TV",
+          "adb_port": "Leave at 5555 unless you changed it"
         }
       },
       "options": {
         "title": "Lights and settings",
         "data": {
-          "shield_entity": "Shield media player (optional — for auto start/stop)",
-          "zone_left": "Left (corner behind viewer)",
-          "zone_right": "Right (corner behind viewer + mantle lamps)",
-          "zone_ceiling": "Ceiling (color temperature follows scene)",
-          "update_interval_ms": "Update interval (ms)",
-          "transition": "Transition time (seconds)",
-          "brightness_factor": "Brightness factor",
-          "saturation_boost": "Saturation boost",
-          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
-          "change_threshold": "Minimum color change (0-255)"
+          "shield_entity": "Media player entity (optional)",
+          "zone_left": "Left zone lights",
+          "zone_right": "Right zone lights",
+          "zone_ceiling": "Ceiling zone lights",
+          "zone_bottom": "Bottom zone lights",
+          "update_interval_ms": "Capture interval (ms)",
+          "transition": "Light transition time (seconds)",
+          "brightness_factor": "Brightness multiplier",
+          "saturation_boost": "Saturation multiplier",
+          "smoothing": "Smoothing",
+          "change_threshold": "Change sensitivity",
+          "suppress_siblings": "GLEDOPTO RGBW: suppress white channel"
+        },
+        "data_description": {
+          "shield_entity": "When set, the ambilight automatically starts and stops with this media player",
+          "zone_left": "Lights on the left side of the TV — driven by the left 30% of the screen (RGB)",
+          "zone_right": "Lights on the right side of the TV — driven by the right 30% of the screen (RGB)",
+          "zone_ceiling": "Lights above the TV — driven by the top half of the screen (color temperature)",
+          "zone_bottom": "Lights below or in front of the TV — driven by the bottom half of the screen (RGB)",
+          "update_interval_ms": "How often the screen is captured. Lower = faster response but more CPU load (100–2000)",
+          "transition": "How long lights fade between colors. Lower = snappier, higher = smoother (0–2s)",
+          "brightness_factor": "Scales the brightness of the captured color. 1.0 = match screen, 2.0 = double brightness",
+          "saturation_boost": "Makes colors more vivid. 1.0 = natural, 1.4 = default, 3.0 = maximum",
+          "smoothing": "Blends each frame with the previous one. 0.1 = very smooth/slow, 1.0 = instant",
+          "change_threshold": "Minimum color difference before lights update. Higher = less flickering, less reactive (1–50)",
+          "suppress_siblings": "For GLEDOPTO GL-C-007 and similar dual-channel RGBW controllers: automatically turns off the white channel when sending color commands"
         }
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to the Shield. Check the IP address and whether ADB network debugging is enabled."
+      "cannot_connect": "Cannot connect to the device. Check the IP address and whether ADB network debugging is enabled."
     },
     "abort": {
       "already_configured": "Ambient TV is already configured."
@@ -37,16 +57,32 @@
       "init": {
         "title": "Lights and settings",
         "data": {
-          "shield_entity": "Shield media player (optional — for auto start/stop)",
-          "zone_left": "Left (corner behind viewer)",
-          "zone_right": "Right (corner behind viewer + mantle lamps)",
-          "zone_ceiling": "Ceiling (color temperature follows scene)",
-          "update_interval_ms": "Update interval (ms)",
-          "transition": "Transition time (seconds)",
-          "brightness_factor": "Brightness factor",
-          "saturation_boost": "Saturation boost",
-          "smoothing": "Smoothing (0.1 = slow/calm, 1.0 = instant)",
-          "change_threshold": "Minimum color change (0-255)"
+          "shield_entity": "Media player entity (optional)",
+          "zone_left": "Left zone lights",
+          "zone_right": "Right zone lights",
+          "zone_ceiling": "Ceiling zone lights",
+          "zone_bottom": "Bottom zone lights",
+          "update_interval_ms": "Capture interval (ms)",
+          "transition": "Light transition time (seconds)",
+          "brightness_factor": "Brightness multiplier",
+          "saturation_boost": "Saturation multiplier",
+          "smoothing": "Smoothing",
+          "change_threshold": "Change sensitivity",
+          "suppress_siblings": "GLEDOPTO RGBW: suppress white channel"
+        },
+        "data_description": {
+          "shield_entity": "When set, the ambilight automatically starts and stops with this media player",
+          "zone_left": "Lights on the left side of the TV — driven by the left 30% of the screen (RGB)",
+          "zone_right": "Lights on the right side of the TV — driven by the right 30% of the screen (RGB)",
+          "zone_ceiling": "Lights above the TV — driven by the top half of the screen (color temperature)",
+          "zone_bottom": "Lights below or in front of the TV — driven by the bottom half of the screen (RGB)",
+          "update_interval_ms": "How often the screen is captured. Lower = faster response but more CPU load (100–2000)",
+          "transition": "How long lights fade between colors. Lower = snappier, higher = smoother (0–2s)",
+          "brightness_factor": "Scales the brightness of the captured color. 1.0 = match screen, 2.0 = double brightness",
+          "saturation_boost": "Makes colors more vivid. 1.0 = natural, 1.4 = default, 3.0 = maximum",
+          "smoothing": "Blends each frame with the previous one. 0.1 = very smooth/slow, 1.0 = instant",
+          "change_threshold": "Minimum color difference before lights update. Higher = less flickering, less reactive (1–50)",
+          "suppress_siblings": "For GLEDOPTO GL-C-007 and similar dual-channel RGBW controllers: automatically turns off the white channel when sending color commands"
         }
       }
     }

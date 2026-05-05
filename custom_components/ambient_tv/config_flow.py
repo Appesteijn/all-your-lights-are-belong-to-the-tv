@@ -21,14 +21,14 @@ _LOGGER = logging.getLogger(__name__)
 
 def _zones_to_lights(user_input: dict) -> dict:
     lights = {}
-    for zone in ("left", "right", "ceiling"):
+    for zone in ("left", "right", "ceiling", "bottom"):
         for entity_id in user_input.get(f"zone_{zone}", []):
             lights[entity_id] = zone
     return lights
 
 
 def _lights_to_zones(lights: dict) -> dict:
-    zones: dict[str, list] = {"zone_left": [], "zone_right": [], "zone_ceiling": []}
+    zones: dict[str, list] = {"zone_left": [], "zone_right": [], "zone_ceiling": [], "zone_bottom": []}
     for entity_id, zone in lights.items():
         key = f"zone_{zone}"
         if key in zones:
@@ -50,6 +50,9 @@ def _options_schema(suggested: dict) -> vol.Schema:
         vol.Optional("zone_ceiling"): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="light", multiple=True)
         ),
+        vol.Optional("zone_bottom"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
         vol.Optional("update_interval_ms", default=DEFAULT_UPDATE_INTERVAL_MS): vol.All(
             int, vol.Range(min=100, max=2000)
         ),
@@ -68,6 +71,7 @@ def _options_schema(suggested: dict) -> vol.Schema:
         vol.Optional("change_threshold", default=DEFAULT_CHANGE_THRESHOLD): vol.All(
             int, vol.Range(min=1, max=50)
         ),
+        vol.Optional("suppress_siblings", default=True): selector.BooleanSelector(),
     })
 
 
@@ -102,7 +106,7 @@ class AmbientTVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             lights = _zones_to_lights(user_input)
             settings = {k: v for k, v in user_input.items() if not k.startswith("zone_")}
             return self.async_create_entry(
-                title="All Your Lights",
+                title=f"Ambient TV ({self._host})",
                 data={"adb_host": self._host, "adb_port": self._port},
                 options={"lights": lights, **settings},
             )

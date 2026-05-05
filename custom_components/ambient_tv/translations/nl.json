@@ -2,31 +2,51 @@
   "config": {
     "step": {
       "user": {
-        "title": "Shield verbinding",
-        "description": "Schakel ADB-netwerk debuggen in op de Shield:\nInstellingen → Apparaatvoorkeuren → Ontwikkelaarsopties → Netwerk-debuggen",
+        "title": "Android apparaat verbinding",
+        "description": "Schakel ADB-netwerk debuggen in op je Android apparaat:\nInstellingen → Apparaatvoorkeuren → Ontwikkelaarsopties → Netwerk-debuggen",
         "data": {
-          "adb_host": "IP-adres van de Shield",
-          "adb_port": "ADB poort (standaard 5555)"
+          "adb_host": "IP-adres van het apparaat",
+          "adb_port": "ADB poort"
+        },
+        "data_description": {
+          "adb_host": "IP-adres van je Android TV / Shield / Fire TV",
+          "adb_port": "Laat op 5555 staan tenzij je dit hebt aangepast"
         }
       },
       "options": {
         "title": "Lampen en instellingen",
         "data": {
-          "shield_entity": "Shield media player (optioneel — voor auto start/stop)",
-          "zone_left": "Links (hoek achter kijker)",
-          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
-          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
-          "update_interval_ms": "Update interval (ms)",
-          "transition": "Overgangstijd (seconden)",
-          "brightness_factor": "Helderheidsfactor",
-          "saturation_boost": "Verzadigingsboost",
-          "smoothing": "Vloeiendheid (0.1 = rustig, 1.0 = direct)",
-          "change_threshold": "Minimale kleurverandering (0-255)"
+          "shield_entity": "Media player entiteit (optioneel)",
+          "zone_left": "Linker zone lampen",
+          "zone_right": "Rechter zone lampen",
+          "zone_ceiling": "Plafond zone lampen",
+          "zone_bottom": "Onder zone lampen",
+          "update_interval_ms": "Capture interval (ms)",
+          "transition": "Licht overgangstijd (seconden)",
+          "brightness_factor": "Helderheidsversterker",
+          "saturation_boost": "Verzadigingsversterker",
+          "smoothing": "Vloeiendheid",
+          "change_threshold": "Wijzigingsgevoeligheid",
+          "suppress_siblings": "GLEDOPTO RGBW: wit-kanaal onderdrukken"
+        },
+        "data_description": {
+          "shield_entity": "Als ingesteld start en stopt het ambilight automatisch met deze media player",
+          "zone_left": "Lampen links van de tv — aangestuurd door de linker 30% van het scherm (RGB)",
+          "zone_right": "Lampen rechts van de tv — aangestuurd door de rechter 30% van het scherm (RGB)",
+          "zone_ceiling": "Lampen boven de tv — aangestuurd door de bovenste helft van het scherm (kleurtemperatuur)",
+          "zone_bottom": "Lampen onder of voor de tv — aangestuurd door de onderste helft van het scherm (RGB)",
+          "update_interval_ms": "Hoe vaak het scherm wordt vastgelegd. Lager = snellere reactie maar meer CPU-gebruik (100–2000)",
+          "transition": "Hoe lang lampen faden tussen kleuren. Lager = snapper, hoger = vloeiender (0–2s)",
+          "brightness_factor": "Schaalt de helderheid van de vastgelegde kleur. 1.0 = scherm volgen, 2.0 = dubbele helderheid",
+          "saturation_boost": "Maakt kleuren levendiger. 1.0 = natuurlijk, 1.4 = standaard, 3.0 = maximum",
+          "smoothing": "Mengt elk frame met het vorige. 0.1 = zeer vloeiend/traag, 1.0 = direct",
+          "change_threshold": "Minimaal kleurverschil voordat lampen updaten. Hoger = minder flikkering, minder reactief (1–50)",
+          "suppress_siblings": "Voor GLEDOPTO GL-C-007 en vergelijkbare dual-channel RGBW controllers: zet automatisch het wit-kanaal uit bij kleurcommando's"
         }
       }
     },
     "error": {
-      "cannot_connect": "Kan geen verbinding maken met de Shield. Controleer IP-adres en of ADB netwerk-debuggen aan staat."
+      "cannot_connect": "Kan geen verbinding maken met het apparaat. Controleer het IP-adres en of ADB netwerk-debuggen aan staat."
     },
     "abort": {
       "already_configured": "Ambient TV is al geconfigureerd."
@@ -37,16 +57,32 @@
       "init": {
         "title": "Lampen en instellingen",
         "data": {
-          "shield_entity": "Shield media player (optioneel — voor auto start/stop)",
-          "zone_left": "Links (hoek achter kijker)",
-          "zone_right": "Rechts (hoek achter kijker + schouwlampen)",
-          "zone_ceiling": "Plafond (kleurtemperatuur volgt scène)",
-          "update_interval_ms": "Update interval (ms)",
-          "transition": "Overgangstijd (seconden)",
-          "brightness_factor": "Helderheidsfactor",
-          "saturation_boost": "Verzadigingsboost",
-          "smoothing": "Vloeiendheid (0.1 = rustig, 1.0 = direct)",
-          "change_threshold": "Minimale kleurverandering (0-255)"
+          "shield_entity": "Media player entiteit (optioneel)",
+          "zone_left": "Linker zone lampen",
+          "zone_right": "Rechter zone lampen",
+          "zone_ceiling": "Plafond zone lampen",
+          "zone_bottom": "Onder zone lampen",
+          "update_interval_ms": "Capture interval (ms)",
+          "transition": "Licht overgangstijd (seconden)",
+          "brightness_factor": "Helderheidsversterker",
+          "saturation_boost": "Verzadigingsversterker",
+          "smoothing": "Vloeiendheid",
+          "change_threshold": "Wijzigingsgevoeligheid",
+          "suppress_siblings": "GLEDOPTO RGBW: wit-kanaal onderdrukken"
+        },
+        "data_description": {
+          "shield_entity": "Als ingesteld start en stopt het ambilight automatisch met deze media player",
+          "zone_left": "Lampen links van de tv — aangestuurd door de linker 30% van het scherm (RGB)",
+          "zone_right": "Lampen rechts van de tv — aangestuurd door de rechter 30% van het scherm (RGB)",
+          "zone_ceiling": "Lampen boven de tv — aangestuurd door de bovenste helft van het scherm (kleurtemperatuur)",
+          "zone_bottom": "Lampen onder of voor de tv — aangestuurd door de onderste helft van het scherm (RGB)",
+          "update_interval_ms": "Hoe vaak het scherm wordt vastgelegd. Lager = snellere reactie maar meer CPU-gebruik (100–2000)",
+          "transition": "Hoe lang lampen faden tussen kleuren. Lager = snapper, hoger = vloeiender (0–2s)",
+          "brightness_factor": "Schaalt de helderheid van de vastgelegde kleur. 1.0 = scherm volgen, 2.0 = dubbele helderheid",
+          "saturation_boost": "Maakt kleuren levendiger. 1.0 = natuurlijk, 1.4 = standaard, 3.0 = maximum",
+          "smoothing": "Mengt elk frame met het vorige. 0.1 = zeer vloeiend/traag, 1.0 = direct",
+          "change_threshold": "Minimaal kleurverschil voordat lampen updaten. Hoger = minder flikkering, minder reactief (1–50)",
+          "suppress_siblings": "Voor GLEDOPTO GL-C-007 en vergelijkbare dual-channel RGBW controllers: zet automatisch het wit-kanaal uit bij kleurcommando's"
         }
       }
     }
